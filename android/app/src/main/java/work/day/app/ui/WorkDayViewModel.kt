@@ -3,8 +3,13 @@ package work.day.app.ui
 import android.app.Application
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharedFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+import work.day.app.domain.model.TopicCandidate
+import work.day.app.domain.model.VideoFormat
 import work.day.app.WorkDayApp
 import work.day.app.data.llm.OfflineLlm
 import work.day.app.data.llm.OpenAiCompatLlm
@@ -32,6 +37,12 @@ class WorkDayViewModel(application: Application) : AndroidViewModel(application)
 
     val session = container.session
     val authClients = container.authClients
+    val authError = container.authError
+
+    val generation: StateFlow<work.day.app.domain.model.GenerationState> = container.generation.state
+
+    private val _generationBusy = MutableStateFlow(false)
+    val generationBusy: StateFlow<Boolean> = _generationBusy.asStateFlow()
 
     /** Сообщения — из контейнера: их генерируют и ViewModel, и OAuthRedirectActivity. */
     val messages: SharedFlow<String> = container.messages
@@ -45,6 +56,7 @@ class WorkDayViewModel(application: Application) : AndroidViewModel(application)
             container.auth.beginLink(provider)
                 .onSuccess { url ->
                     if (work.day.app.OAuthRedirectActivity.open(getApplication(), url)) {
+                        container.authError(null)
                         _status("Открываю страницу согласия ${provider.label} — вернёшься в приложение сам")
                     } else {
                         container.auth.cancelLink("не чем открыть страницу согласия")
@@ -57,29 +69,58 @@ class WorkDayViewModel(application: Application) : AndroidViewModel(application)
 
     fun signIn(email: String, password: String) = viewModelScope.launch {
         container.auth.signIn(email, password)
-            .onSuccess { _status("Вход выполнен") }
-            .onFailure { _status("Вход не получился: ${it.message?.take(180)}") }
+            .onSuccess {
+                container.authError(null)
+                _status("Вход выполнен")
+            }
+            .onFailure {
+                container.authError("Вход не получился: ${it.message?.take(180)}")
+                _status("Вход не получился: ${it.message?.take(180)}")
+            }
     }
 
     fun register(email: String, password: String, confirm: String) = viewModelScope.launch {
         container.auth.register(email, password, confirm)
-            .onSuccess { _status(if (authClients.value.readyForFirebase) "Аккаунт создан в Firebase" else "Пароль установлен, приложение под замком") }
-            .onFailure { _status("Регистрация не удалась: ${it.message?.take(180)}") }
+            .onSuccess {
+                container.authError(null)
+                _status(if (authClients.value.readyForFirebase) "Аккаунт создан в Firebase" else "Пароль установлен, приложение под замком")
+            }
+            .onFailure {
+                val text = "Регистрация не удалась: ${it.message?.take(180)}"
+                container.authError(text)
+                _status(text)
+            }
     }
 
     fun resetPassword(email: String) = viewModelScope.launch {
         container.auth.requestPasswordReset(email)
-            .onSuccess { _status("Письмо для сброса отправлено на $email") }
-            .onFailure { _status(it.message?.take(180).orEmpty()) }
+            .onSuccess {
+                container.authError(null)
+                _status("Письмо для сброса отправлено на $email")
+            }
+            .onFailure {
+                container.authError(it.message?.take(180).orEmpty())
+                _status(it.message?.take(180).orEmpty())
+            }
     }
 
-    fun continueAsGuest() = container.auth.continueAsGuest()
+    /** Ошибку снимает ввод: иначе человек правит поле, а красный текст уже не про него. */
+    fun clearAuthError() = container.authError(null)
+
+    fun continueAsGuest() {
+        container.authError(null)
+        container.auth.continueAsGuest()
+    }
     fun tokenStorage(): String = container.tokenStorageLabel()
     fun signOut() = viewModelScope.launch {
         container.auth.signOut()
         notify("Вышли; токены отозваны")
     }
-    fun unlock(password: String): Boolean = container.auth.verifyLock(password)
+    fun unlock(password: String): Boolean {
+        val ok = container.auth.verifyLock(password)
+        container.authError(if (ok) null else "Пароль не подошёл")
+        return ok
+    }
     fun revoke(provider: work.day.app.domain.model.AuthProvider) = viewModelScope.launch {
         container.auth.revoke(provider)
         _status("Отвязано: ${provider.label}")
@@ -95,6 +136,75 @@ class WorkDayViewModel(application: Application) : AndroidViewModel(application)
         container.saveAuthClients(clients)
         _status("Клиенты авторизации сохранены на устройстве")
     }
+
+    // ─── генерация роликов ───────────────────────────────────────────────────
+
+    fun genNiche(name: String) = container.generation.setNiche(name)
+
+    fun genFormat(format: VideoFormat) = container.generation.setFormat(format)
+
+    fun genDuration(seconds: Int) = container.generation.setDuration(seconds)
+
+    fun genSuggestDuration(): Int = container.generation.suggestedDuration()
+
+    fun genAvailableFormats(): List<VideoFormat> = VideoFormat.entries
+
+    /** Шаг 1. Тема + длительность — то, что отдаёт нажатие «Сгенерировать». */
+    fun generate() = viewModelScope.launch {
+        _generationBusy.value = true
+        container.generation.generate()
+            .onSuccess { topics ->
+                _status(
+                    if (topics.isEmpty()) "Генерация вернула пустой список — проверь нишу"
+                    else "Тем: ${topics.size}. Дольше всех держит: ${topics.first().title.take(48)}"
+                )
+            }
+            .onFailure { _status("Генерация не удалась: ${it.message?.take(160)}") }
+        _generationBusy.value = false
+    }
+
+    /** Шаг 2. Скелет по битам + правки агента-монтажёра + проверка прав + рецепт ffmpeg. */
+    fun buildPlan(topic: TopicCandidate) = viewModelScope.launch {
+        _generationBusy.value = true
+        container.generation.build(topic)
+            .onSuccess { plan ->
+                val verdict = if (plan.compliance.allowedToPublish) "к публикации допущен"
+                else "блокеров: ${plan.compliance.blockers.size}"
+                _status("Собран ${plan.totalSec}с · балл ${plan.scoreBefore.total}→${plan.scoreAfter.total} · $verdict")
+            }
+            .onFailure { _status("Сборка не удалась: ${it.message?.take(160)}") }
+        _generationBusy.value = false
+    }
+
+    fun reEditPlan() = viewModelScope.launch {
+        _generationBusy.value = true
+        container.generation.reEdit()
+            .onSuccess { _status("Монтажёр прошёл ещё раз: балл ${it.scoreAfter.total}") }
+            .onFailure { _status("Правок больше нет: ${it.message?.take(120)}") }
+        _generationBusy.value = false
+    }
+
+    fun researchNow() = viewModelScope.launch {
+        _generationBusy.value = true
+        container.generation.refreshResearch()
+            .onSuccess { _status(if (it == 0) "Ключа YouTube API нет — считаю по демо-приорам нишы" else "Статистика нишы: $it роликов") }
+            .onFailure { _status("YouTube не ответил: ${it.message?.take(160)}") }
+        _generationBusy.value = false
+    }
+
+    fun enqueueGenerated() {
+        val plan = generation.value.plan ?: return _status("Сначала собери ролик")
+        if (!plan.compliance.allowedToPublish) {
+            _status("В очередь не пущу: сначала закрой блокирующие проверки (${plan.compliance.blockers.first().rule})")
+            return
+        }
+        container.generation.enqueueToChannel(plan)
+        _status("Положил в очередь публикаций: ${plan.title.take(40)} — выкладываешь руками")
+    }
+
+    fun exportRecipe(): String = generation.value.plan?.let { container.generation.exportRecipe(it) }.orEmpty()
+
+    fun generationNiches(): List<String> = container.generation.niches
 
     /** TikTok-статистика, если токен жив — обновляет followers в профиле. */
     fun refreshTikTokStats() = viewModelScope.launch {

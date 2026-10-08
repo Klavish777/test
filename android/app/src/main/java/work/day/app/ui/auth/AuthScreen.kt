@@ -20,6 +20,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
@@ -34,7 +35,9 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.platform.LocalContext
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import work.day.app.domain.model.AuthClients
 import work.day.app.domain.model.AuthProvider
 import work.day.app.ui.WorkDayViewModel
 import work.day.app.ui.common.LabeledField
@@ -47,13 +50,26 @@ import work.day.app.ui.common.Panel
  */
 @Composable
 fun AuthScreen(vm: WorkDayViewModel, modifier: Modifier = Modifier) {
+    val context = LocalContext.current
     val session by vm.session.collectAsStateWithLifecycle()
     val clients by vm.authClients.collectAsStateWithLifecycle()
-    var mode by remember { mutableStateOf(Mode.SIGN_IN) }
+    val error by vm.authError.collectAsStateWithLifecycle()
+
+    // На свежем устройстве аккаунта нет — значит, и начинать надо с регистрации,
+    // а не с «Войти», которое может только ответить «аккаунта нет».
+    var mode by remember { mutableStateOf(if (session.hasPassword) Mode.SIGN_IN else Mode.REGISTER) }
     var email by remember { mutableStateOf(session.email) }
     var password by remember { mutableStateOf("") }
     var confirm by remember { mutableStateOf("") }
     var busy by remember { mutableStateOf(false) }
+    var setupOpen by remember { mutableStateOf(!clients.readyForGoogle && !clients.readyForTikTok) }
+
+    val build = remember {
+        runCatching {
+            val info = context.packageManager.getPackageInfo(context.packageName, 0)
+            "${info.versionName} · сборка ${android.text.format.DateFormat.getDateFormat(context).format(java.util.Date(info.lastUpdateTime))}"
+        }.getOrDefault("")
+    }
 
     Column(
         Modifier
@@ -88,11 +104,11 @@ fun AuthScreen(vm: WorkDayViewModel, modifier: Modifier = Modifier) {
             ProviderRow(
                 icon = "▶",
                 title = "Google",
-                subtitle = if (clients.readyForGoogle) scopesGoogle() else "нужен Google Client ID в настройках",
+                subtitle = if (clients.readyForGoogle) scopesGoogle() else "нужен Google Client ID — впиши его ниже",
                 ready = clients.readyForGoogle,
                 connected = session.link(AuthProvider.GOOGLE) != null,
                 accent = Color(0xFFFF4E45),
-                onClick = { busy = true; vm.link(AuthProvider.GOOGLE); busy = false },
+                onClick = { vm.clearAuthError(); busy = true; vm.link(AuthProvider.GOOGLE); busy = false },
             )
             ProviderRow(
                 icon = "♪",
@@ -102,8 +118,53 @@ fun AuthScreen(vm: WorkDayViewModel, modifier: Modifier = Modifier) {
                 ready = clients.readyForTikTok,
                 connected = session.link(AuthProvider.TIKTOK) != null,
                 accent = Color(0xFF25F4EE),
-                onClick = { busy = true; vm.link(AuthProvider.TIKTOK); busy = false },
+                onClick = { vm.clearAuthError(); busy = true; vm.link(AuthProvider.TIKTOK); busy = false },
             )
+        }
+
+        Panel {
+            Row(
+                Modifier.fillMaxWidth().clickable { setupOpen = !setupOpen },
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Text(
+                    if (setupOpen) "Скрыть настройку ключей" else "У меня есть ключи из консолей — вписать",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold,
+                    modifier = Modifier.weight(1f),
+                    color = MaterialTheme.colorScheme.primary,
+                )
+                Text(if (setupOpen) "−" else "+", style = MaterialTheme.typography.titleLarge)
+            }
+            if (setupOpen) {
+                var googleId by remember { mutableStateOf(clients.googleClientId) }
+                var tiktokKey by remember { mutableStateOf(clients.tiktokClientKey) }
+                var redirect by remember { mutableStateOf(clients.redirectUri) }
+                Spacer(Modifier.height(10.dp))
+                Text(
+                    "Публичные ключи клиента: секрета у приложения нет и быть не может. " +
+                        "Эта сборка: $build. Пошаговая настройка консолей — docs/AUTH.md.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.outline,
+                )
+                Spacer(Modifier.height(8.dp))
+                LabeledField("Google Client ID", googleId, { googleId = it.trim() }, placeholder = "xxxx.apps.googleusercontent.com")
+                Spacer(Modifier.height(8.dp))
+                LabeledField("TikTok Client Key", tiktokKey, { tiktokKey = it.trim() }, placeholder = "aw…")
+                Spacer(Modifier.height(8.dp))
+                LabeledField("Redirect URI", redirect, { redirect = it.trim() }, placeholder = "https://…/auth-callback/")
+                Spacer(Modifier.height(10.dp))
+                Button(onClick = {
+                    vm.saveAuthClients(
+                        clients.copy(
+                            googleClientId = googleId.trim(),
+                            tiktokClientKey = tiktokKey.trim(),
+                            redirectUri = redirect.trim().ifBlank { AuthClients.DEFAULT_REDIRECT },
+                        )
+                    )
+                    setupOpen = false
+                }, modifier = Modifier.fillMaxWidth()) { Text("Сохранить и сделать активным") }
+            }
         }
 
         Panel {
@@ -129,15 +190,15 @@ fun AuthScreen(vm: WorkDayViewModel, modifier: Modifier = Modifier) {
 
             Spacer(Modifier.height(12.dp))
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                ModeTab("Вход", mode == Mode.SIGN_IN) { mode = Mode.SIGN_IN }
-                ModeTab("Регистрация", mode == Mode.REGISTER) { mode = Mode.REGISTER }
+                ModeTab("Вход", mode == Mode.SIGN_IN) { mode = Mode.SIGN_IN; vm.clearAuthError() }
+                ModeTab("Регистрация", mode == Mode.REGISTER) { mode = Mode.REGISTER; vm.clearAuthError() }
                 ModeTab("Забыли?", mode == Mode.RESET) { mode = Mode.RESET }
             }
             Spacer(Modifier.height(12.dp))
-            LabeledField("Почта", email, { email = it }, placeholder = "you@mail.com")
+            LabeledField("Почта", email, { email = it; vm.clearAuthError() }, placeholder = "you@mail.com")
             Spacer(Modifier.height(10.dp))
             if (mode != Mode.RESET) {
-                LabeledField("Пароль", password, { password = it }, placeholder = "от 6 символов")
+                LabeledField("Пароль", password, { password = it; vm.clearAuthError() }, placeholder = "от 6 символов")
                 if (mode == Mode.REGISTER) {
                     Spacer(Modifier.height(10.dp))
                     LabeledField("Повтори пароль", confirm, { confirm = it })
@@ -163,12 +224,34 @@ fun AuthScreen(vm: WorkDayViewModel, modifier: Modifier = Modifier) {
             }
         }
 
+        error?.let { text ->
+            Panel(background = Color(0xFF26141A), border = Color(0x88FF5C7A)) {
+                Text("Почему не вошло", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
+                Spacer(Modifier.height(4.dp))
+                Text(text, style = MaterialTheme.typography.bodySmall, color = Color(0xFFFFB3C1))
+                if (text.contains("зарегистрир")) {
+                    Spacer(Modifier.height(8.dp))
+                    TextButton(onClick = { mode = Mode.REGISTER; vm.clearAuthError() }) {
+                        Text("Перейти к регистрации", color = Color(0xFFFF8FA3))
+                    }
+                }
+            }
+        }
+
         Text(
             "Права, которые приложение запрашивает: только чтение статистики. Ни публикацию, ни удаление, " +
             "ни управление комментариями от твоего имени — и не попросит.",
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.outline,
         )
+        if (build.isNotBlank()) {
+            Text(
+                "Сборка $build — если здесь нет вкладки «Генерация» или поля «Повтори пароль», " +
+                    "на телефоне лежит старый APK: снеси и поставь свежий.",
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.outline,
+            )
+        }
         Spacer(Modifier.height(20.dp))
     }
 }

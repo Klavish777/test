@@ -103,6 +103,14 @@ data class AuthClients(
     val readyForFirebase: Boolean get() = firebaseApiKey.isNotBlank()
 
     companion object {
-        const val DEFAULT_REDIRECT = "workdayauth://oauth2callback"
+        /**
+         * Что улетает в `redirect_uri` и что нужно вписать в консоль Google/TikTok.
+         * Кастомные URI-схемы для installed apps Google больше не поддерживает, а TikTok
+         * требует https — поэтому редирект это страница-перехват (docs/auth-callback/,
+         * публикуется GitHub Pages), которая сама отсылает код в приложение по схеме ниже.
+         */
+        const val DEFAULT_REDIRECT = "https://klavish777.github.io/auth-callback/"
+        /** Схема, на которую страница-перехват возвращает код в приложение. */
+        const val CUSTOM_SCHEME_REDIRECT = "workdayauth://oauth2callback"
     }
 }

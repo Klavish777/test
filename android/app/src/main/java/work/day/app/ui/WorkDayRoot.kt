@@ -22,6 +22,7 @@ import androidx.compose.material.icons.filled.DateRange
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.List
 import androidx.compose.material.icons.filled.Person
+import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Settings
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -31,6 +32,7 @@ import android.content.Context
 import androidx.compose.ui.platform.LocalContext
 import work.day.app.WorkDayApp
 import work.day.app.ui.agents.AgentsScreen
+import work.day.app.ui.generation.GenerationScreen
 import work.day.app.ui.growth.GrowthScreen
 import work.day.app.ui.settings.SettingsScreen
 import work.day.app.ui.shift.ShiftScreen
@@ -49,6 +51,7 @@ fun WorkDayRoot() {
         Tab("Агенты", Icons.Filled.Person),
         Tab("Задачи", Icons.Filled.List),
         Tab("Рост", Icons.Filled.DateRange),
+        Tab("Генерация", Icons.Filled.PlayArrow),
         Tab("Настройки", Icons.Filled.Settings),
     )
     var selected by rememberSaveable { mutableStateOf(0) }
@@ -61,12 +64,21 @@ fun WorkDayRoot() {
     }
 
     // Порядок: если стоит замок — сначала он; если человек ещё не входил и не отказался — экран входа.
-    if (session.lockEnabled && !unlocked) {
-        work.day.app.ui.auth.LockScreen(vm, onUnlocked = { unlocked = true })
-        return
-    }
-    if (session.needsAuth) {
-        work.day.app.ui.auth.AuthScreen(vm)
+    // ВАЖНО: гейт тоже живёт внутри Scaffold. Раньше экраны входа и замка рисовались до Scaffold,
+    // поэтому SnackbarHost был ещё не смонтирован и сообщения об ошибках входа исчезали в никуда —
+    // нажатие «Войти» без аккаунта выглядело как зависшее приложение.
+    val locked = session.lockEnabled && !unlocked
+    if (locked || session.needsAuth) {
+        Scaffold(
+            containerColor = MaterialTheme.colorScheme.background,
+            snackbarHost = { SnackbarHost(snackbar) },
+        ) { padding ->
+            if (locked) {
+                work.day.app.ui.auth.LockScreen(vm, onUnlocked = { unlocked = true }, modifier = Modifier.padding(padding))
+            } else {
+                work.day.app.ui.auth.AuthScreen(vm, modifier = Modifier.padding(padding))
+            }
+        }
         return
     }
 
@@ -91,6 +103,7 @@ fun WorkDayRoot() {
             1 -> { m -> AgentsScreen(vm, m) }
             2 -> { m -> TasksScreen(vm, m) }
             3 -> { m -> GrowthScreen(vm, m) }
+            4 -> { m -> GenerationScreen(vm, m) }
             else -> { m -> SettingsScreen(vm, m) }
         }
         content(Modifier.padding(padding))

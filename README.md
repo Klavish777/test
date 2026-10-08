@@ -3,7 +3,8 @@
 **Свежий debug-APK:** [WorkDay-debug.apk](https://github.com/Klavish777/test/releases/download/workday-latest/WorkDay-debug.apk)
  · [страница релиза](https://github.com/Klavish777/test/releases/tag/workday-latest) (пересобирается CI при каждом пуше в `android/`)
 
-**Android-приложение с четырьмя AI-агентами, которые ведут рабочий день твоего канала на YouTube и TikTok.**
+**Android-приложение с четырьмя AI-агентами, которые ведут рабочий день твоего канала на YouTube и TikTok,
+плюс мастерская «Генерация» — сборка ролика по статистике нишы.**
 Не «кнопка накрутки», а смена: у каждого агента своё направление, свои KPI, свои плейбуки и вечерний отчёт.
 
 | Агент | Направление | Что делает в смене | Главная метрика |
@@ -40,6 +41,32 @@ Work Day **не накручивает** аудиторию и не публик
 
 Задачи не «выполняются всегда все»: агент физически берёт только то, что упёрлось в текущий слот смены,
 а выключенный агент или выключенный плейбук просто не попадает в план.
+
+## Генерация: ролик из статистики нишы
+
+Шестая вкладка — не ещё один агент, а конвейер: **YouTube-ресурсы превращаются в план ролика,
+который можно монетизировать и выложить на свой канал, не нарушив политику автора**.
+
+```
+ниша + формат → разрез нишы по YouTube Data API (просмотры/час, медиана длительности, шаблоны заголовков)
+   → 6 тем, отранжированных по этому разрезу, + рекомендованная длительность
+   → скелет по битам: сумма таймингов равна длительности ни на секунду
+   → агент-монтажёр «Ножницы»: правки, каждая из которых обязана поднять балл (проверяется тестом)
+   → проверка прав и монетизации → пакет: заголовок, описание, теги, SRT, ТЗ превьюхи
+   → manifest.json + render.sh (ffmpeg) → «В очередь публикации» → ты публикуешь руками
+```
+
+* **Долго держит — а не «красиво»:** балл считается по пяти осям (хук, ритм, раскрытие, удержание,
+  монетизация) из реальной статистики нишы, а не по вкусу модели. Модель даёт формулировки.
+* **Права — блокер, а не сноска:** чужая музыка, чужой ролик целиком, отсутствие субтитров,
+  накрутки и демонетизирующие темы не дают положить пакет в очередь. Музыка — только своё, CC0
+  или YouTube Audio Library.
+* **Телефон не врёт, что смонтировал ролик:** он отдаёт рецепт сборки (ffmpeg + SRT) под твои
+  материалы. Скачиванием чужого приложение не занимается вообще.
+* **Без ключа YouTube API работает:** считает по демо-приорам нишы и помечает это явно.
+  `search.list` стоит 100 единиц квоты, поэтому разрез нишы кэшируется на 6 часов.
+
+Подробно — [docs/GENERATION.md](docs/GENERATION.md).
 
 ## Модель и ключи
 
@@ -101,27 +128,36 @@ android/                          Android-приложение (Kotlin 2.0.21, J
                                    Domain.kt (ChannelProfile, AgentTask, Artifact…), Playbook.kt
     domain/agent/                  GrowthAgent.kt (контракт + промпт-конвейер), Agents.kt (4 персоны)
     domain/engine/ShiftEngine.kt   смена: фазы, тики, очередь, одобрения, отчёт
+    domain/engine/ViralLab.kt      «Генерация»: разрез нишы → темы → биты → балл → правки → права → рецепт
+    domain/model/Generation.kt     VideoFormat, BeatRole, ViralScore, AssetLicense, GenerationPlan, ResearchItem
+    domain/agent/ViralEditor.kt    агент-монтажёр «Ножницы»: формулировки тем и озвучки от модели
     domain/SafetyPolicy.kt         жёсткие границы: что агенты не делают никогда
     data/llm/                      LlmClient, OpenAiCompatLlm, OfflineLlm
     data/repo/                     SettingsRepository (DataStore), WorkspaceRepository, SampleMetrics
-    data/platform/                 YouTubeDataApi (чтение), AnalyticsImporter (CSV)
+    data/platform/                 YouTubeDataApi (чтение), YouTubeResearch (search.list → разрез нишы),
+                                   AnalyticsImporter (CSV)
+    data/repo/GenerationRepository.kt  оркестрация генерации: кэш статистики, сборка плана, очередь публикации
     data/auth/                     вход целиком: PasswordHasher (PBKDF2), Pkce, Urls, TokenResponse,
                                    SecureStore (Keystore), GoogleOAuth, TikTokOAuth, FirebaseAuthRest,
                                    OAuthHttp, AuthRepository (оркестратор: pending-состояние, state, refresh)
     OAuthRedirectActivity.kt       точка возврата из браузера (workdayauth:// и https App Link)
-    ui/                            WorkDayRoot + WorkDayViewModel и 6 вкладок:
-                                   Смена · Агенты · Задачи · Рост · Аккаунт · Настройки
+    ui/                            WorkDayRoot + WorkDayViewModel и вкладки приложения:
+                                   Смена · Агенты · Задачи · Рост · Генерация · Настройки
+                                   (в прототипе сверху ещё «Аккаунт» — в приложении он внутри «Настроек»)
+    ui/generation/GenerationScreen.kt  темы с баллами, скелет по битам, правки, лицензии, рецепт
     ui/auth/                       AuthScreen (провайдеры + вход/регистрация), LockScreen (замок)
   app/src/test/…/DomainTest.kt     юнит-тесты домена и парсера
   app/src/test/…/AuthTest.kt       хеш, PKCE, разбор редиректа, реестр аккаунта, «пароля нет в JSON»
-                                   (./gradlew :app:testDebugUnitTest)
+  app/src/test/…/GenerationTest.kt тайминги битов, рост балла после правок, блокеры по правам, SRT,
+                                   разбор ISO/PT-ответов YouTube (./gradlew :app:testDebugUnitTest)
 
 preview/                          кликабельный прототип интерфейса (тот же движок, чистый JS)
-  index.html app.js engine.test.js auth.test.js package.json
+  index.html app.js engine.test.js auth.test.js lab.test.js package.json
 docs/ARCHITECTURE.md              слои, поток данных, почему так, а не иначе
 docs/AGENTS.md                    спецификация 4 агентов, плейбуков и риск-модели
 docs/BUILD.md                     как собрать APK и что понадобится
 docs/AUTH.md                      настройка Google / TikTok / Firebase, redirect, типовые ошибки
+docs/GENERATION.md                что считает «Генерация», откуда цифры, как устроена проверка прав
 docs/auth-callback/index.html     страница-перехват для OAuth (класть на GitHub Pages)
 docs/.well-known/assetlinks.json  подтверждение App Link для той же страницы
 tools/assetlinks.sh               SHA-1 для консоли Google + SHA-256 для assetlinks.json
@@ -131,7 +167,7 @@ tools/assetlinks.sh               SHA-1 для консоли Google + SHA-256 �
 
 ```bash
 # прототип интерфейса + тесты движка (Node 18+, сервер не нужен — можно открыть файл)
-cd preview && npm test                          # 18 тестов: модель, смена, риск-модель, экраны, вход
+cd preview && npm test                          # 27 тестов: модель, смена, риск-модель, генерация, вход
 python3 -m http.server 8137 --bind 0.0.0.0      # и открыть http://localhost:8137
 
 # Android-приложение — открыть android/ в Android Studio, Gradle Sync, Run.

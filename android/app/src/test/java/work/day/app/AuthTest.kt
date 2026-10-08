@@ -198,7 +198,10 @@ class AuthRepositoryTest {
         assertTrue(url.startsWith("https://accounts.google.com/o/oauth2/v2/auth"))
         assertTrue(url.contains("code_challenge_method=S256"))
         assertTrue(url.contains("response_type=code"))
-        assertTrue(url.contains("redirect_uri=workdayauth%3A%2F%2Foauth2callback"))
+        // Google не принимает custom scheme у installed-приложений: редирект — https-страница-перехват,
+        // а уже она отсылает код в приложение по workdayauth://
+        assertTrue(url.contains("redirect_uri=https%3A%2F%2Fklavish777.github.io%2Fauth-callback%2F"))
+        assertEquals(AuthClients.CUSTOM_SCHEME_REDIRECT, "workdayauth://oauth2callback")
         assertTrue(url.contains("youtube.readonly"))
         // ключевая граница продукта: права на запись приложение не запрашивает никогда
         val scopePart = java.net.URLDecoder.decode(url.substringAfter("scope=", "").substringBefore("&"), "UTF-8")

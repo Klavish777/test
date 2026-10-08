@@ -355,8 +355,12 @@ S.auth = { session: { links: [], email: '', guest: false, lockEnabled: false, pa
 
 function viewAuth() {
   const a = S.auth;
-  const form = A_FORM;
-  const err = AUTH_ERRORS.length ? `<div class="panel" style="background:#26141a;border-color:#5b2635">${AUTH_ERRORS.map(e => `<div class="sub" style="color:#ffb3c1">• ${e}</div>`).join('')}</div>` : '';
+  // На свежем устройстве пароля нет — значит начинать надо с регистрации, а не с «Войти».
+  const form = A_FORM || (a.session.passwordHash ? 'signin' : 'register');
+  const err = AUTH_ERRORS.length
+    ? `<div class="panel" style="background:#26141a;border-color:#5b2635">${AUTH_ERRORS.map(e => `<div class="sub" style="color:#ffb3c1">• ${e}</div>`).join('')}
+      ${/зарегистр/i.test(AUTH_ERRORS.join(' ')) ? `<div class="row" style="margin-top:8px"><button class="pill" style="background:var(--danger)" onclick="A_FORM='register';AUTH_ERRORS=[];render()">Перейти к регистрации</button></div>` : ''}</div>`
+    : '';
   return `<div class="sec" style="margin-top:10px">Work Day</div>
   <div style="font-size:21px;font-weight:800;letter-spacing:-.4px">Смена из четырёх AI-агентов</div>
   <div class="sub" style="margin:5px 0 14px">Прирост, привлечение, ускорение и активность для YouTube и TikTok. Вход не обязателен: без привязанных площадок агенты работают на демо-данных.</div>
@@ -389,12 +393,24 @@ function viewAuth() {
       ${form==='reset'
         ? `<button class="btn" onclick="doReset()">Письмо для сброса</button>`
         : `<button class="btn" onclick="${form==='register'?'doRegister()':'doSignIn()'}">${form==='register'?'Создать аккаунт':'Войти'}</button>`}
-      <button class="btn ghost" onclick="S.auth.session.guest=true;render()">Без входа</button>
+      <button class="btn ghost" onclick="S.auth.session.guest=true;AUTH_ERRORS=[];render()">Без входа</button>
     </div>
+    <div class="sub" style="margin-top:8px;color:var(--t3)">Если нет вкладки «Генерация» или поля «Повтори пароль» — на устройстве старый APK: снеси и поставь свежий. Сборка прототипа: 0.1.0-preview.</div>
+  </div>
+
+  <div class="panel">
+    <div class="row sb"><div class="h" style="font-size:15px">Ключи из консолей</div>
+      <button class="pill" onclick="GEN_KEYS=!GEN_KEYS;render()">${GEN_KEYS?'скрыть':'вписать'}</button></div>
+    ${GEN_KEYS ? `<label class="lbl">Google Client ID</label><input class="field" value="${a.clients.google}" oninput="S.auth.clients.google=this.value.trim()">
+      <label class="lbl">TikTok Client Key</label><input class="field" value="${a.clients.tiktok}" oninput="S.auth.clients.tiktok=this.value.trim()">
+      <label class="lbl">Redirect URI</label><input class="field" value="${a.clients.redirect}" oninput="S.auth.clients.redirect=this.value.trim()">
+      <div class="sub" style="margin-top:6px">Публичные ключи клиента: секрета у приложения нет и быть не может. Пошаговая настройка консолей — docs/AUTH.md.</div>
+      <div class="row" style="margin-top:10px"><button class="btn" onclick="GEN_KEYS=false;render()">Сохранить и сделать активным</button></div>` : `<div class="sub" style="margin-top:6px">Без ключей вход через Google/TikTok недоступен — но приложение работает: «Без входа» даёт демо-данные, логин и пароль держат замок на устройстве.</div>`}
   </div>`;
 }
+let GEN_KEYS = false;
 
-let A_FORM='signin', A_EMAIL='', A_PW='', A_PW2='', AUTH_ERRORS=[];
+let A_FORM='', A_EMAIL='', A_PW='', A_PW2='', AUTH_ERRORS=[];
 
 function doRegister(){ const r=A.register(A_EMAIL,A_PW,A_PW2); AUTH_ERRORS=r.ok?[]:r.errors; if(r.ok){A_PW='';A_PW2='';toast('Аккаунт создан · приложение под замком');} render(); }
 function doSignIn(){ const r=A.signIn(A_EMAIL,A_PW); AUTH_ERRORS=r.ok?[]:r.errors; if(r.ok){A_PW='';A.forceUnlock();render();} else render(); }
@@ -453,8 +469,346 @@ function viewAccount(){
     <div class="sub" style="margin-top:8px">Даже если аккаунт заведён в Firebase, пароль устройства сверяется локальным хешем: в метро запрос к Firebase не должен быть условием входа в свои заметки.</div></div>`;
 }
 
+/* ═══ ГЕНЕРАЦИЯ — зеркало domain/engine/ViralLab.kt ═══
+   Формулы совпадают с Kotlin намеренно: сумма битов обязана равняться заказанной
+   длительности, а правки монтажёра — только поднимать балл. Тест: preview/lab.test.js. */
+const LAB = (() => {
+  const FORMATS = {
+    SHORTS: { label: 'Shorts', min: 20, max: 58, vertical: true },
+    FEED: { label: 'В лентах', min: 61, max: 180, vertical: false },
+    MID: { label: 'Середина', min: 181, max: 480, vertical: false },
+    LONG: { label: 'Длинное', min: 481, max: 900, vertical: false },
+  };
+  const NICHES = [
+    { name: 'Финансы и деньги', query: 'как накопить деньги', intent: 'быстрые деньги, ловушки, экономия', shorts: true, kids: false, adv: 78 },
+    { name: 'Рецепты и кухня', query: 'рецепт на сковороде за 5 минут', intent: 'скорость, бюджет, «вау»-кадр', shorts: true, kids: false, adv: 86 },
+    { name: 'Фитнес и тело', query: 'упражнение для спины дома', intent: 'техника, боль, результат за срок', shorts: true, kids: false, adv: 82 },
+    { name: 'Техника и гаджеты', query: 'обзор смартфона за 30 секунд', intent: 'сравнение, цена, скрытые функции', shorts: true, kids: false, adv: 90 },
+    { name: 'Сделай сам', query: 'ремонт который спасёт бюджет', intent: 'до/после, инструменты, ошибка новичка', shorts: true, kids: false, adv: 80 },
+    { name: 'Игры', query: 'секретная механика которая решает', intent: 'метки, патчи, скрытые детали', shorts: true, kids: false, adv: 74 },
+    { name: 'Юмор и скетчи', query: 'скетч про будни', intent: 'ожидание/реальность, петля в конце', shorts: true, kids: false, adv: 68 },
+    { name: 'Образование', query: 'объяснение за 60 секунд', intent: 'инсайт, аналогия, «теперь я понял»', shorts: true, kids: false, adv: 88 },
+    { name: 'Психология', query: 'признак что человек врал', intent: 'самопроверка, конкретика, без диагнозов', shorts: true, kids: false, adv: 72 },
+    { name: 'Путешествия', query: 'сколько стоит съездить', intent: 'цена, ловушка сезона, кадр-доказательство', shorts: true, kids: false, adv: 76 },
+    { name: 'Красота и уход', query: 'ошибка которая портит кожу', intent: 'до/после, состав, возраст', shorts: true, kids: false, adv: 84 },
+    { name: 'Авто и мотто', query: 'что убивает двигатель', intent: 'срок, ремонт, звук/запах-доказательство', shorts: true, kids: false, adv: 79 },
+    { name: 'Родительство', query: 'что делать если ребёнок не спит', intent: 'без паники, возраст, возрастная маркировка', shorts: true, kids: true, adv: 66 },
+    { name: 'Бизнес и найм', query: 'собеседование которое всё решает', intent: 'цифры, провал, чек-лист', shorts: false, kids: false, adv: 85 },
+  ];
+  const ROLES = ['HOOK', 'SETUP', 'PAYLOAD', 'PROOF', 'TWIST', 'CTA', 'LOOP'];
+  const ROLE_LABEL = { HOOK: 'хук', SETUP: 'разогрев', PAYLOAD: 'мясо', PROOF: 'доказательство', TWIST: 'лом ожидания', CTA: 'призыв', LOOP: 'петля' };
+  const DEMONETIZING = ['казино', 'букмек', 'займ до зарплаты', 'сброс веса за', 'таблетк', 'лекарств', 'диагноз', 'оружи', 'нож', 'наркот', '18+', 'порно', 'секс', 'голый', 'кровь', 'труп', 'самоуб', 'курение', 'вейп'];
+  const RIGHTS_TRAPS = ['скачай', 'перекача', 'репост', 'возьми у', 'взять у', 'чужой ролик', 'без разрешения', 'парс', 'скачать с', 'обрезать чуж'];
+  const FAKE_ENGAGEMENT = ['накрут', 'купить просмотры', 'купить подписчик', 'суб4sub', 'взаимная подписк', 'масс-фолло', 'массфол', 'бот'];
+  const BLOCKING_LICENSE = ['NEEDS_PERMISSION', 'REPOSTED'];
+
+  const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+  const med = (list) => { const s = list.slice().filter(v => v > 0).sort((a, b) => a - b); return s.length ? s[Math.floor(s.length / 2)] : 0; };
+  const hasNumber = (t) => /\d/.test(t || '');
+  const short = (t, words) => (t || '').split(/\s+/).filter(Boolean).slice(0, words).join(' ');
+
+  function statsOf(research) {
+    if (!research || research.length < 3) {
+      return { sample: research ? research.length : 0, medianDuration: 38, medianViews: 180000, velocity: 210, likeRatio: 0.041, patterns: ['цифра в заголовке', 'обещание срока', 'отрицание «без / не»'], demo: true };
+    }
+    const titles = research.map(r => (r.title || '').toLowerCase());
+    const patterns = [];
+    if (titles.filter(t => hasNumber(t)).length > titles.length / 2) patterns.push('цифра в заголовке');
+    if (titles.filter(t => t.startsWith('как') || t.includes(' как ')).length > titles.length / 3) patterns.push('«как …» — обещание навыка');
+    if (titles.filter(t => t.includes('без ') || t.includes('ошибк')).length > titles.length / 4) patterns.push('отрицание и страх ошибки');
+    if (!patterns.length) patterns.push('прямое обещание результата');
+    const hours = (r) => Math.max(1, (Date.now() - Date.parse(r.publishedAt || '')) / 3600000 || 720);
+    return {
+      sample: research.length,
+      medianDuration: med(research.map(r => r.durationSec || 0)),
+      medianViews: med(research.map(r => r.views || 0)),
+      velocity: med(research.map(r => (r.views || 0) / hours(r))),
+      likeRatio: med(research.map(r => (r.views ? r.likes / r.views : 0))),
+      patterns,
+      demo: false,
+    };
+  }
+
+  function pickDuration(formatKey, st) {
+    const anchor = st.medianDuration || 0;
+    const k = (mult, fallback) => anchor > 0 ? Math.round(anchor * mult) : fallback;
+    const bounds = { SHORTS: [20, 47], FEED: [61, 170], MID: [181, 420], LONG: [481, 870] }[formatKey];
+    const target = formatKey === 'SHORTS' ? k(0.72, 34) : formatKey === 'FEED' ? k(0.8, 95) : formatKey === 'MID' ? k(0.9, 300) : anchor || 660;
+    return clamp(target, bounds[0], bounds[1]);
+  }
+
+  /** Инвариант: сумма длительностей битов == duration, тайминги идут подряд без дыр. */
+  function buildBeats(topic) {
+    const f = FORMATS[topic.format];
+    const total = clamp(topic.durationSec, f.min, f.max);
+    const v = f.vertical;
+    const hook = v ? Math.min(3, Math.max(2, Math.floor(total * 8 / 100))) : Math.min(6, Math.max(3, Math.floor(total * 3 / 100)));
+    const setup = v ? Math.max(3, Math.floor(total * 12 / 100)) : Math.max(6, Math.floor(total * 9 / 100));
+    const proof = v ? Math.max(3, Math.floor(total * 13 / 100)) : Math.max(8, Math.floor(total * 11 / 100));
+    const cta = v ? Math.max(2, Math.floor(total * 8 / 100)) : Math.max(5, Math.floor(total * 5 / 100));
+    const loop = (v && total <= 45) ? 1 : 0;
+    const twist = v ? 0 : Math.max(5, Math.floor(total * 6 / 100));
+    const rest = total - hook - setup - proof - cta - loop - twist;
+    const count = total <= 30 ? 2 : total <= 60 ? 3 : total <= 180 ? 4 : total <= 420 ? 5 : 6;
+    const each = Math.max(2, Math.floor(rest / count));
+    const payload = [];
+    for (let i = 0; i < count; i++) payload.push(i === count - 1 ? each + (rest - each * count) : each);
+    const roles = [['HOOK', hook], ['SETUP', setup]]
+      .concat(payload.map(len => ['PAYLOAD', len]))
+      .concat(twist > 0 ? [['TWIST', twist]] : [])
+      .concat([['PROOF', proof], ['CTA', cta]])
+      .concat(loop > 0 ? [['LOOP', loop]] : []);
+    let cursor = 0;
+    return roles.map(([role, len], index) => {
+      const beat = {
+        index, start: cursor, end: cursor + len, role,
+        voice: voiceFor(role, topic, len, v),
+        screen: screenFor(role, index),
+        shot: v ? 'крупно, 9:16, смена плана каждый такт' : 'средний план, штатив',
+        overlay: role === 'HOOK' ? short(topic.title, 3).toUpperCase() : role === 'PAYLOAD' ? 'шаг ' + (index + 1) : role === 'PROOF' ? 'факт' : role === 'CTA' ? 'продолжение →' : '',
+      };
+      cursor += len;
+      return beat;
+    });
+  }
+
+  function screenFor(role, index) {
+    return {
+      HOOK: 'самое сильное движение в первые полсекунды, без логотипа и без «привет»',
+      SETUP: 'ставка: что зритель получит и что потеряет, если пролистнёт',
+      PAYLOAD: 'шаг ' + (index + 1) + ': действие + результат в кадре',
+      PROOF: 'цифра на экране: замер, скрин, до/после',
+      TWIST: 'кадр, который противоречит началу',
+      CTA: 'одна причина вернуться: что будет в следующем ролике',
+      LOOP: 'последний кадр = первый',
+    }[role];
+  }
+
+  function voiceFor(role, topic, len, vertical) {
+    const words = Math.max(2, Math.floor(len / (vertical ? 3.1 : 2.6) * 2));
+    const core = short(topic.title, Math.min(words, vertical ? 12 : 24));
+    return {
+      HOOK: core + ' — и вот что я понял не сразу',
+      SETUP: 'Дальше — приёма, которые закрывают вопрос',
+      PAYLOAD: 'Делаешь так: ' + core + ', и проверяешь результат в кадре',
+      PROOF: 'И вот что получилось: ' + core,
+      TWIST: 'А теперь наоборот',
+      CTA: 'Следующим роликом разбираю продолжение',
+      LOOP: 'И сначала',
+    }[role];
+  }
+
+  function assetsFor(topic, beats) {
+    const out = [];
+    beats.forEach(b => {
+      if (b.role === 'HOOK' || b.role === 'PAYLOAD' || b.role === 'TWIST') out.push({ id: 'clip-' + b.index, kind: 'OWN_CLIP', license: 'OWN', query: b.screen });
+      if (b.role === 'PROOF') out.push({ id: 'proof-' + b.index, kind: 'OWN_BROLL', license: 'OWN', query: b.overlay || b.screen });
+      if (b.role === 'SETUP' || b.role === 'CTA') out.push({ id: 'text-' + b.index, kind: 'TEXT_OVERLAY', license: 'OWN', query: b.overlay || 'плашка' });
+    });
+    out.push({ id: 'music', kind: 'MUSIC', license: 'YT_AUDIO_LIBRARY', query: 'YouTube Audio Library, без вокала' });
+    return out;
+  }
+
+  function score(beats, topic, assets) {
+    if (!beats.length) return { hook: 0, pacing: 0, payoff: 0, retention: 0, monetization: 0, total: 0 };
+    const total = Math.max(1, beats.reduce((a, b) => a + (b.end - b.start), 0));
+    const v = FORMATS[topic.format].vertical;
+    const hookBeat = beats.find(b => b.role === 'HOOK');
+    let hook = clamp(52 + (hasNumber(topic.title) ? 16 : 0) + (topic.title.length > 22 && topic.title.length < 78 ? 12 : 0) + (topic.hook && topic.hook.length > 20 ? 10 : 0), 0, 100);
+    if (hookBeat) hook = clamp(hook - Math.max(0, (hookBeat.end - hookBeat.start) - (v ? 3 : 6)) * 7, 0, 100);
+    const longest = Math.max(...beats.map(b => b.end - b.start));
+    const pacing = clamp(92 - Math.max(0, Math.floor(longest * 100 / total) - (v ? 24 : 34)) * 2 + Math.floor(beats.length * 10 / total * 6), 0, 100);
+    const firstPayload = beats.findIndex(b => b.role === 'PAYLOAD');
+    const payloadStart = firstPayload >= 0 ? Math.floor(beats[firstPayload].start * 100 / total) : 100;
+    const hasProof = beats.some(b => b.role === 'PROOF' && b.overlay);
+    const payoff = clamp(48 + (payloadStart <= 42 ? 22 : 4) + (hasProof ? 20 : 0) + (beats.some(b => hasNumber(b.voice)) ? 10 : 0), 0, 100);
+    const hasLoop = beats.some(b => b.role === 'LOOP');
+    const specificCta = beats.some(b => b.role === 'CTA' && !(b.voice || '').includes('подпишись') && !(b.voice || '').includes('лайк'));
+    const overlays = Math.floor(beats.filter(b => b.overlay).length * 100 / beats.length);
+    const retention = clamp(40 + ((hasLoop || !v) ? 14 : 0) + (specificCta ? 14 : 0) + Math.floor(overlays * 18 / 100) + (topic.velocity > 200 ? 14 : 8), 0, 100);
+    const cleanMusic = !assets.some(a => a.kind === 'MUSIC' && BLOCKING_LICENSE.includes(a.license));
+    const captions = assets.some(a => a.kind === 'CAPTIONS');
+    const ownShare = assets.length ? Math.floor(assets.filter(a => !BLOCKING_LICENSE.includes(a.license)).length * 100 / assets.length) : 100;
+    const niche = NICHES.find(n => n.name === topic.niche);
+    const monetization = clamp(46 + (cleanMusic ? 18 : 0) + (captions ? 12 : 0) + Math.floor(ownShare * 14 / 100) + Math.floor((niche ? niche.adv : 70) / 8), 0, 100);
+    return { hook, pacing, payoff, retention, monetization, total: Math.floor((hook + pacing + payoff + retention + monetization) / 5) };
+  }
+
+  /** Правки монтажёра: каждая меняет вход, из которого считается балл. */
+  function editPass(beats, topic, assets) {
+    const edits = [];
+    let cur = beats.map(b => Object.assign({}, b));
+    let list = assets.map(a => Object.assign({}, a));
+    const v = FORMATS[topic.format].vertical;
+    const total = Math.max(1, cur.reduce((a, b) => a + (b.end - b.start), 0));
+
+    const hi = cur.findIndex(b => b.role === 'HOOK' && (b.end - b.start) > (v ? 3 : 6));
+    if (hi >= 0) {
+      const keep = v ? 3 : 6, hook = cur[hi], extra = (hook.end - hook.start) - keep;
+      const head = Object.assign({}, hook, { end: hook.start + keep });
+      const tail = { index: -1, start: head.end, end: head.end + extra, role: 'SETUP', voice: 'И вот главное, что я упустил: ' + short(hook.voice, 8), screen: 'довод из хука', shot: hook.shot, overlay: 'почему это важно' };
+      cur = splice(cur, hi, [head, tail]);
+      edits.push({ action: 'хук ужат до ' + keep + 'с, остаток уехал в разогрев', before: (hook.end - hook.start) + 'с хука', after: keep + 'с + ' + extra + 'с', reason: 'решение о пролистке принимается за 2–3 секунды', delta: 9 });
+    }
+
+    const fat = cur.find(b => (b.end - b.start) * 100 > total * (v ? 28 : 36) && b.role === 'PAYLOAD');
+    if (fat) {
+      const mid = fat.start + Math.floor((fat.end - fat.start) / 2);
+      const a = Object.assign({}, fat, { end: mid });
+      const b = { index: -1, start: mid, end: fat.end, role: 'PAYLOAD', voice: 'и сразу следом', screen: fat.screen.replace('действие + результат', 'результат прошлого шага крупно'), shot: 'смена ракурса', overlay: 'следом' };
+      cur = splice(cur, fat.index, [a, b]);
+      edits.push({ action: 'бит ' + (fat.end - fat.start) + 'с разрезан пополам', before: 'один план ' + (fat.end - fat.start) + 'с', after: (mid - fat.start) + 'с + ' + (fat.end - mid) + 'с', reason: 'один план дольше ' + (v ? 6 : 12) + ' секунд = провал удержания посередине', delta: 7 });
+    }
+
+    if (!cur.some(b => b.role === 'PROOF')) {
+      const donors = cur.filter(b => b.role === 'PAYLOAD');
+      const donor = donors.sort((a, b) => (b.end - b.start) - (a.end - a.start))[0];
+      if (donor && (donor.end - donor.start) > 6) {
+        const cut = Math.min(4, (donor.end - donor.start) - 4);
+        const shrink = Object.assign({}, donor, { end: donor.end - cut });
+        const proof = { index: -1, start: shrink.end, end: shrink.end + cut, role: 'PROOF', voice: 'и вот что получилось: ' + short(topic.title, 6), screen: 'цифра на экране', shot: 'стоп-кадр', overlay: 'факт' };
+        cur = splice(cur, donor.index, [shrink, proof]);
+        edits.push({ action: 'добавлен бит доказательства (' + cut + 'с)', before: 'обещание без проверки', after: 'обещание + ' + cut + 'с факта', reason: 'заголовок без доказательства = гнев в комментариях', delta: 8 });
+      }
+    }
+
+    const ctaBad = cur.findIndex(b => b.role === 'CTA' && ((b.voice || '').includes('подпишись') || (b.voice || '').includes('лайк')));
+    if (ctaBad >= 0) {
+      const old = cur[ctaBad];
+      const better = Object.assign({}, old, { voice: 'Если пригодилось — следующим роликом разбираю ' + short(topic.title, 5), overlay: 'продолжение →' });
+      cur[ctaBad] = better;
+      edits.push({ action: 'призыв переписан на причину вернуться', before: (old.voice || '').slice(0, 48), after: (better.voice || '').slice(0, 48), reason: 'просьба о подписке ничего не даёт', delta: 6 });
+    }
+
+    if (!list.some(a => a.kind === 'CAPTIONS')) {
+      list.push({ id: 'captions', kind: 'CAPTIONS', license: 'OWN', query: 'captions.srt из рецепта' });
+      edits.push({ action: 'добавлены субтитры', before: 'нет', after: 'captions.srt, 2–4 слова в строке', reason: 'без субтитров теряется до 80% просмотров без звука', delta: 5 });
+    }
+
+    list.forEach(a => {
+      if (a.kind === 'MUSIC' && BLOCKING_LICENSE.includes(a.license)) {
+        a.license = 'YT_AUDIO_LIBRARY'; a.note = 'заменено: лицензия блокировала монетизацию';
+        edits.push({ action: 'трек заменён на YouTube Audio Library', before: 'нужно разрешение', after: 'YouTube Audio Library', reason: 'чужой трек = страйк и обнуление дохода', delta: 4 });
+      }
+    });
+
+    const uncovered = cur.filter(b => b.role === 'PAYLOAD' && !b.overlay);
+    if (uncovered.length) {
+      uncovered.forEach(b => { const i = cur.findIndex(x => x.index === b.index); if (i >= 0) cur[i] = Object.assign({}, b, { overlay: 'шаг ' + (b.index + 1) }); });
+      edits.push({ action: 'на ' + uncovered.length + ' бит(а) добавлены плашки', before: 'пустой экран', after: '2–4 слова', reason: 'текст удерживает тех, кто смотрит без звука', delta: 5 });
+    }
+
+    return { beats: retime(cur), assets: list, edits };
+  }
+
+  function splice(beats, index, replacement) {
+    const out = beats.filter((_, i) => i !== index).concat(replacement);
+    return retime(out.sort((a, b) => a.start - b.start || a.index - b.index));
+  }
+
+  function retime(beats) {
+    let cursor = 0;
+    return beats.map((b, i) => {
+      const len = Math.max(1, b.end - b.start);
+      cursor += len;
+      return Object.assign({}, b, { index: i, start: cursor - len, end: cursor });
+    });
+  }
+
+  function compliance(topic, beats, assets, title, description) {
+    const spoken = (beats.map(b => b.voice).join(' ') + ' ' + (description || '')).toLowerCase();
+    const t = (title || topic.title || '').toLowerCase();
+    const checks = [];
+    const add = (rule, ok, fix, blocking = true) => checks.push({ rule, ok, fix, blocking });
+    add('Музыка только со свободной лицензией', !assets.some(a => a.kind === 'MUSIC' && BLOCKING_LICENSE.includes(a.license)), 'замени трек на YouTube Audio Library: чужая запись = Content ID');
+    const foreign = assets.filter(a => BLOCKING_LICENSE.includes(a.license)).length;
+    add('Никаких чужих роликов целиком (reused content)', foreign === 0, 'переиздание чужого не монетизируется; оставляй идею, а картинку снимай свою');
+    const ownShare = assets.length ? assets.filter(a => !BLOCKING_LICENSE.includes(a.license)).length / assets.length : 1;
+    add('Не менее 60% — твой собственный материал', ownShare >= 0.6, 'добавь свои съёмки, свой голос и свои плашки', ownShare < 0.34);
+    add('Заголовок не обещает того, чего нет в ролике', !hasNumber(t) || beats.some(b => hasNumber(b.voice) || b.overlay), 'clickbait без доказательства: жалобы на обман', false);
+    add('Субтитры есть', assets.some(a => a.kind === 'CAPTIONS') || beats.some(b => b.overlay), 'собери captions.srt из рецепта');
+    add('Нет призывов скачивать/перекладывать чужое', !RIGHTS_TRAPS.some(w => spoken.includes(w)), 'убери формулировку: это прямой путь к страйку');
+    add('Нет накруток и покупной активности', !FAKE_ENGAGEMENT.some(w => spoken.includes(w)), 'запрещённый приём: бан канала и обнуление охватов');
+    add('Нет демонетизирующих тем в озвучке и описании', !DEMONETIZING.some(w => spoken.includes(w)), 'жёлтый значок: убери или переформулируй');
+    const niche = NICHES.find(n => n.name === topic.niche);
+    add('Маркировка «для детей» решена явно', !niche || !niche.kids || (description || '').toLowerCase().includes('для детей'), 'ниша детская: укажи audience', false);
+    return {
+      checks,
+      allowedToPublish: !checks.some(c => c.blocking && !c.ok),
+      blockers: checks.filter(c => c.blocking && !c.ok),
+      warnings: checks.filter(c => !c.blocking && !c.ok),
+    };
+  }
+
+  function timestamp(sec) {
+    const h = Math.floor(sec / 3600), m = Math.floor(sec % 3600 / 60), s = sec % 60;
+    return [h, m, s].map(n => String(n).padStart(2, '0')).join(':') + ',000';
+  }
+
+  function toSrt(beats) {
+    let out = '', n = 1;
+    beats.forEach(b => {
+      const lines = (b.voice || '').match(/.{1,42}/g) || [];
+      if (!lines.filter(x => x.trim()).length) return;
+      const len = Math.max(1, b.end - b.start), per = Math.max(1, Math.floor(len / lines.length));
+      let start = b.start;
+      lines.forEach((line, i) => {
+        const end = i === lines.length - 1 ? b.end : Math.min(b.end, start + per);
+        out += (n++) + '\n' + timestamp(start) + ' --> ' + timestamp(end) + '\n' + line.trim() + '\n\n';
+        start = end;
+      });
+    });
+    return out.trimEnd() + (out ? '\n' : '');
+  }
+
+  function topics(nicheName, formatKey, requested, research) {
+    const niche = NICHES.find(n => n.name === nicheName) || NICHES[0];
+    const st = statsOf(research);
+    const f = FORMATS[formatKey];
+    const duration = requested > 0 ? clamp(requested, f.min, f.max) : pickDuration(formatKey, st);
+    const seeds = [
+      { title: (st.patterns[0].includes('цифра') ? '3 ' : '') + niche.intent.split(',')[0].trim() + ': что делают не так', hook: 'Ты делаешь это не так — и теряешь результат на второй день' },
+      { title: niche.query.split(' ').slice(0, 4).join(' ') + ': вариант на ноль рублей', hook: 'Пробую без бюджета — и вот что вышло' },
+      { title: 'ошибка в начале, которая стоит ' + (st.demo ? 'недель' : 'месяцев'), hook: 'Эту ошибку я повторял полгода' },
+      { title: 'как ' + niche.query.split(' ').slice(0, 3).join(' ') + ' за 60 секунд', hook: 'За минуту — то, что объясняют часами' },
+      { title: 'что я ' + niche.intent.split(',')[0].trim() + ' — замер', hook: 'Замерял честно, показываю цифры' },
+      { title: 'почему ' + niche.query.split(' ').slice(0, 2).join(' ') + ' не работает у новичка', hook: 'Дело не в инструменте, а в порядке действий' },
+    ];
+    return seeds.map((seed, i) => {
+      const topic = { title: seed.title, hook: seed.hook, niche: niche.name, format: formatKey, durationSec: duration, velocity: Math.round(st.velocity), demo: st.demo };
+      const beats = buildBeats(topic);
+      return Object.assign(topic, { beats, score: score(beats, topic, assetsFor(topic, beats)), why: 'в топе нишы держатся обещания с проверкой; медиана нишы ' + st.medianDuration + 'с @ ' + Math.round(st.medianViews) + ' просм' });
+    }).sort((a, b) => b.score.total - a.score.total || b.velocity - a.velocity).slice(0, 6)
+      .map((t, i) => Object.assign(t, { rank: i + 1 }));
+  }
+
+  function recipe(topic, beats) {
+    const f = FORMATS[topic.format];
+    const size = f.vertical ? '1080:1920' : '1920:1080';
+    const script = ['#!/usr/bin/env bash', '# Собирает ролик из твоих материалов. ffmpeg 6+, запускать на компьютере.', 'set -euo pipefail', 'SRC=clips', 'MUSIC=music.m4a', 'OUT=final.mp4',
+      'ls "$SRC"/*.mp4 | sort | sed "s/^/file \'/;s/$/\'/" > clips.txt',
+      'ffmpeg -y -f concat -safe 0 -i clips.txt -i "$MUSIC" \\',
+      '  -filter_complex "[0:v]scale=' + size + ':force_original_aspect_ratio=decrease,pad=' + size + ':(ow-iw)/2:(oh-ih)/2,setsar=1,fps=30[v]" \\',
+      '  -map "[v]" -map 1:a -c:v libx264 -preset medium -crf 19 -c:a aac -b:a 192k -shortest "$OUT"'].join('\n');
+    const manifest = JSON.stringify({ title: topic.title, format: topic.format, width: f.vertical ? 1080 : 1920, height: f.vertical ? 1920 : 1080, fps: 30, durationSec: beats.reduce((a, b) => a + (b.end - b.start), 0), beats: beats.length }, null, 2);
+    return { script, manifest, srt: toSrt(beats), notes: 'Кладет свои куски в clips/, музыку — из Audio Library. Приложение ничего не скачивает и не публикует.' };
+  }
+
+  function packaging(topic, beats) {
+    return {
+      title: topic.title.slice(0, 98),
+      description: topic.hook + '\n\nДлительность ' + topic.durationSec + 'с, формат ' + FORMATS[topic.format].label + '. Собрано по разбору «' + topic.niche + '». Материалы свои; музыка — YouTube Audio Library.',
+      tags: [topic.niche.toLowerCase(), 'shorts', 'разбор'].filter(t => t.length > 2),
+      thumbnailBrief: 'Одно лицо/один объект крупно + 3 слова: «' + short(topic.title, 3).toUpperCase() + '»',
+      pinned: 'Тайм-коды: ' + beats.slice(0, 4).map(b => b.start + 'с ' + ROLE_LABEL[b.role]).join(' · '),
+    };
+  }
+
+  return { FORMATS, NICHES, ROLE_LABEL, statsOf, pickDuration, buildBeats, assetsFor, score, editPass, compliance, toSrt, timestamp, topics, recipe, packaging, clamp, hasNumber };
+})();
+
 /* ═══ RENDER ═══ */
-const TABS=[['shift','Смена','M4 5h16v14H4z M4 9h16'],['agents','Агенты','M12 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8m-7 8a7 7 0 0 1 14 0'],['tasks','Задачи','M5 7h14M5 12h14M5 17h9'],['growth','Рост','M4 19V9m5 10V5m5 14v-7m5 7V8'],['account','Аккаунт','M9 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8m-6 8a6 6 0 0 1 12 0M17 8h4m-2-2v4'],['settings','Настройки','M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6m7-3a7 7 0 0 0-.1-1l2-1.5-2-3.4-2.3 1a7 7 0 0 0-1.7-1L12.5 2h-4l-.4 2.6a7 7 0 0 0-1.7 1l-2.3-1-2 3.4L4.1 9.5a7 7 0 0 0 0 2L2.1 13l2 3.4 2.3-1a7 7 0 0 0 1.7 1l.4 2.6h4l.4-2.6a7 7 0 0 0 1.7-1l2.3 1 2-3.4-2-1.5c.1-.3.1-.7.1-1z']];
+const TABS=[['shift','Смена','M4 5h16v14H4z M4 9h16'],['agents','Агенты','M12 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8m-7 8a7 7 0 0 1 14 0'],['tasks','Задачи','M5 7h14M5 12h14M5 17h9'],['growth','Рост','M4 19V9m5 10V5m5 14v-7m5 7V8'],['generation','Генерация','M8 5v14l11-7z'],['account','Аккаунт','M9 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8m-6 8a6 6 0 0 1 12 0M17 8h4m-2-2v4'],['settings','Настройки','M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6m7-3a7 7 0 0 0-.1-1l2-1.5-2-3.4-2.3 1a7 7 0 0 0-1.7-1L12.5 2h-4l-.4 2.6a7 7 0 0 0-1.7 1l-2.3-1-2 3.4L4.1 9.5a7 7 0 0 0 0 2L2.1 13l2 3.4 2.3-1a7 7 0 0 0 1.7 1l.4 2.6h4l.4-2.6a7 7 0 0 0 1.7-1l2.3 1 2-3.4-2-1.5c.1-.3.1-.7.1-1z']];
 
 function render(){
   document.getElementById('sbClock').textContent=clock(S.clock);
@@ -467,7 +821,8 @@ function render(){
   document.getElementById('tabbar').innerHTML = TABS.map(([k,label,path])=>
     `<button class="${S.tab===k?'on':''}" onclick="S.tab='${k}';render()"><span style="position:relative">${pending&&k==='tasks'?`<span class="badge">${pending}</span>`:''}<svg viewBox="0 0 24 24"><path d="${path}"/></svg></span>${label}</button>`).join('');
   const el=document.getElementById('screen');
-  el.innerHTML = ({shift:viewShift,agents:viewAgents,tasks:viewTasks,growth:viewGrowth,account:viewAccount,settings:viewSettings})[S.tab]();
+  const views = { shift: viewShift, agents: viewAgents, tasks: viewTasks, growth: viewGrowth, generation: viewGeneration, account: viewAccount, settings: viewSettings };
+  el.innerHTML = (views[S.tab] || viewShift)();
 }
 
 function phaseLabel(){return {idle:'смена не идёт',planning:'распределяем задачи',working:'идёт смена',paused:'пауза',finished:'смена закрыта'}[S.phase]}
@@ -585,7 +940,7 @@ function viewTasks(){
   <div class="sub" style="margin:-2px 2px 10px">Агент готовит материал, но публичное действие подтверждаешь ты. Не перестраховка: аккаунт твой, и бан за накрутку тоже твой.</div>
   <div class="chips" style="margin-bottom:12px">${filters.map(([k,l,n])=>`<button class="pill ${f===k?'on':''}" style="${f===k?'background:var(--violet)':''}" onclick="S.filter='${k}';render()">${l} <b>${n}</b></button>`).join('')}</div>
   ${!list.length?`<div class="panel"><div class="sub">${f==='approval'?'Ничего не ждёт одобрения — смена идёт чисто.':'Пусто. Запусти смену на вкладке «Смена», чтобы агенты начали готовить пакеты.'}</div></div>`:''}
-  ${f==='queue'? S.queue.map(q=>{const kind=byId(q.kind);return `<div class="task">
+  ${f==='queue'? S.queue.map(q=>{const kind=q.gen?{title:q.gen.title,output:[q.gen.body]}:byId(q.kind);return `<div class="task">
       <div class="row"><div class="ava" style="width:30px;height:30px;font-size:15px;background:${agent(q.agent).accent}22">${agent(q.agent).emoji}</div>
       <div class="grow"><div style="font-weight:700;font-size:14px">${kind.title}</div><div class="sub">${q.agent==='scout'?'TikTok':'YouTube'} · слот ${clock(q.slot)} · ${q.state==='ready'?'готово к публикации':'опубликовано вручную'}</div></div></div>
       <div class="task out full">${kind.output.join('\n')}</div>
@@ -699,9 +1054,161 @@ function viewSettings(){
   <div class="panel soft"><div class="sub">Work Day 0.1.0 · 4 агента · ${PLAYBOOKS.length} плейбуков · ${ACTIONS.length} действий. Данные смены лежат в одном JSON на устройстве, своего сервера у приложения нет.</div></div>`;
 }
 
+/* ═══ ЭКРАН «ГЕНЕРАЦИЯ» (зеркало ui/generation/GenerationScreen.kt) ═══ */
+const GEN = { niche: '', format: 'SHORTS', duration: 0, topics: [], plan: null, research: [], openEv: -1, showRecipe: false, status: '' };
+
+
+function demoResearch(niche) {
+  const seeds = ['как ', 'почему ', 'ошибка: ', 'за 7 дней: ', 'разбор ', 'что делать если '];
+  return seeds.map((pre, i) => ({
+    title: pre + niche.query + (i % 2 ? ' за ' + (3 + i) + ' минут' : ''),
+    views: 120000 + i * 74000, likes: 5200 + i * 900, durationSec: 26 + i * 9,
+    publishedAt: new Date(Date.now() - (i + 1) * 36e5 * 26).toISOString().slice(0, 19) + 'Z',
+  }));
+}
+
+function genNiche(name) { GEN.niche = name; GEN.topics = []; GEN.plan = null; GEN.research = []; render(); }
+function genFormat(f) { GEN.format = f; GEN.duration = 0; GEN.plan = null; render(); }
+function genDuration(v) {
+  const n = parseInt(v, 10);
+  GEN.duration = LAB.clamp(isNaN(n) ? 0 : n, 0, LAB.FORMATS[GEN.format].max);
+  render();
+}
+function genResearch() {
+  const niche = LAB.NICHES.find(n => n.name === (GEN.niche || S.profile.niche)) || LAB.NICHES[0];
+  GEN.research = demoResearch(niche);
+  GEN.status = 'демо-выдача нишы: ' + GEN.research.length + ' роликов (в APK это search.list + videos.list YouTube Data API, кэш 6 часов)';
+  render();
+}
+function genGenerate() {
+  const name = GEN.niche || LAB.NICHES[0].name;
+  const duration = GEN.duration > 0 ? GEN.duration : LAB.pickDuration(GEN.format, LAB.statsOf(GEN.research));
+  GEN.duration = duration;
+  GEN.topics = LAB.topics(name, GEN.format, duration, GEN.research);
+  GEN.status = 'тем: ' + GEN.topics.length + ' · длительность ' + duration + 'с · ' + (GEN.research.length ? 'живая статистика нишы' : 'демо-приоры: ключа YouTube API нет');
+  GEN.plan = null;
+  render();
+}
+function genBuild(i) {
+  const t = GEN.topics[i];
+  const assetsRaw = LAB.assetsFor(t, t.beats);
+  const before = LAB.score(t.beats, t, assetsRaw);
+  const pass = LAB.editPass(t.beats, t, assetsRaw);
+  const after = LAB.score(pass.beats, t, pass.assets);
+  const pack = LAB.packaging(t, pass.beats);
+  GEN.plan = {
+    topic: t, beats: pass.beats, assets: pass.assets, edits: pass.edits,
+    before, after, compliance: LAB.compliance(t, pass.beats, pass.assets, pack.title, pack.description),
+    pack, recipe: LAB.recipe(t, pass.beats),
+  };
+  GEN.status = 'собран «' + pack.title.slice(0, 40) + '» · балл ' + before.total + '→' + after.total;
+  render();
+}
+function genReedit() {
+  if (!GEN.plan) return;
+  const pass = LAB.editPass(GEN.plan.beats, GEN.plan.topic, GEN.plan.assets);
+  GEN.plan = Object.assign({}, GEN.plan, {
+    beats: pass.beats, assets: pass.assets, edits: GEN.plan.edits.concat(pass.edits),
+    after: LAB.score(pass.beats, GEN.plan.topic, pass.assets),
+    compliance: LAB.compliance(GEN.plan.topic, pass.beats, pass.assets, GEN.plan.pack.title, GEN.plan.pack.description),
+    recipe: LAB.recipe(GEN.plan.topic, pass.beats),
+  });
+  GEN.status = 'монтажёр прошёл ещё раз: балл ' + GEN.plan.after.total;
+  render();
+}
+function genEnqueue() {
+  const p = GEN.plan;
+  if (!p) return;
+  if (!p.compliance.allowedToPublish) { GEN.status = 'в очередь не пущу: ' + p.compliance.blockers[0].rule; return render(); }
+  S.queue.unshift({
+    id: 'p' + (uid++), task: 'gen', agent: 'magnet', kind: 'magnet.packaging', slot: 18 * 60 + 30, state: 'ready',
+    gen: {
+      title: p.pack.title,
+      body: [p.pack.description, '', 'Теги: ' + p.pack.tags.join(', '),
+        'Длительность: ' + p.beats.reduce((a, b) => a + (b.end - b.start), 0) + 'с',
+        'Балл вирусности: ' + p.after.total + ' (было ' + p.before.total + ')',
+        'Сборка: ./render.sh из рецепта, материалы — свои.'].join('\n'),
+    },
+  });
+  GEN.status = 'положил в очередь публикаций · выкладываешь руками';
+  S.tab = 'tasks'; S.filter = 'queue';
+  render();
+}
+
+function viewGeneration() {
+  const formats = Object.keys(LAB.FORMATS);
+  const st = LAB.statsOf(GEN.research);
+  const g = GEN.plan;
+  return `<div class="sec" style="margin-top:4px">Генерация</div>
+  <div class="sub" style="margin-bottom:10px">Ролик собирается из статистики нишы: что залетает, какой длины и с каким хуком. На выходе — биты, озвучка, субтитры, проверка прав и ffmpeg-скрипт. Публикация — вручную.</div>
+  <div class="panel">
+    <div class="h" style="font-size:13px">Ниша</div>
+    <div class="chips" style="margin-top:7px">${LAB.NICHES.map(n => `<button class="pill ${(GEN.niche || LAB.NICHES[0].name) === n.name ? 'on' : ''}" style="${(GEN.niche || LAB.NICHES[0].name) === n.name ? 'background:var(--amber)' : ''}" onclick="genNiche('${n.name}')">${n.name}</button>`).join('')}</div>
+    <div class="h" style="font-size:13px;margin-top:12px">Формат</div>
+    <div class="chips" style="margin-top:7px">${formats.map(f => `<button class="pill ${GEN.format === f ? 'on' : ''}" style="${GEN.format === f ? 'background:var(--amber)' : ''}" onclick="genFormat('${f}')">${LAB.FORMATS[f].label} · ${LAB.FORMATS[f].min}–${LAB.FORMATS[f].max}с</button>`).join('')}</div>
+    <div class="row" style="margin-top:12px;align-items:flex-end">
+      <div class="grow"><label class="lbl">Длительность, секунд (0 — предложу по статистике)</label>
+        <input class="field" type="number" value="${GEN.duration}" oninput="GEN.duration=parseInt(this.value,10)||0"></div>
+      <button class="btn ghost" onclick="GEN.duration=LAB.pickDuration(GEN.format,LAB.statsOf(GEN.research));render()">≈ ${LAB.pickDuration(GEN.format, st)}с</button>
+    </div>
+    <div class="row" style="margin-top:12px">
+      <button class="btn" onclick="genGenerate()">Сгенерировать темы</button>
+      <button class="btn ghost" onclick="genResearch()">Статистика нишы</button>
+      <div class="grow"></div>
+      <span class="tag" style="color:${st.demo ? 'var(--sun)' : 'var(--mint)'}">${st.demo ? 'демо-приоры' : 'выборка ' + st.sample}</span>
+    </div>
+    ${GEN.status ? `<div class="sub" style="margin-top:9px">${GEN.status}</div>` : ''}
+  </div>
+  <div class="panel soft">
+    <div class="h" style="font-size:13px">Ножницы — агент-монтажёр</div>
+    ${['не берёт чужие ролики и треки', 'не обещает в заголовке того, чего нет в битах', 'не вставляет накрутки и покупную активность', 'не публикует сам: отдаёт пакет и скрипт сборки', 'не выдумывает цифры: без статистики говорит «демо-приоры»'].map(r => `<div class="sub" style="padding:1.5px 0">• ${r}</div>`).join('')}
+  </div>
+  ${!GEN.topics.length ? `<div class="panel"><div class="sub">Пока пусто. Выбери нишу и формат — и нажми «Сгенерировать темы».</div></div>` : GEN.topics.map((t, i) => `
+    <div class="panel">
+      <div class="row" style="align-items:flex-start">
+        <div class="ava" style="width:38px;height:38px;background:var(--amber)22;color:var(--amber);font-weight:800">${t.score.total}</div>
+        <div class="grow" style="padding-left:10px">
+          <div style="font-weight:700;font-size:14px">${i + 1}. ${t.title}</div>
+          <div class="sub">${t.niche} · ${LAB.FORMATS[t.format].label} · ${t.durationSec}с · ${t.velocity} просм/ч${t.demo ? ' · демо-приоры' : ''}</div>
+        </div>
+      </div>
+      <div style="margin-top:8px">${[['хук', t.score.hook], ['ритм', t.score.pacing], ['раскрытие', t.score.payoff], ['удержание', t.score.retention], ['монетизация', t.score.monetization]].map(([k, v]) => `<div class="row" style="gap:8px;align-items:center;padding:1px 0"><span style="width:88px;font-size:10.5px;color:var(--t3)">${k} ${v}</span><div class="bar grow"><i style="width:${v}%;background:${v >= 75 ? 'var(--ok)' : v >= 50 ? 'var(--amber)' : 'var(--danger)'}"></i></div></div>`).join('')}</div>
+      <div class="sub" style="margin-top:7px">${t.why}</div>
+      <div class="sub" style="margin-top:4px;color:var(--t3)">хук: ${t.hook}</div>
+      <div class="row" style="margin-top:10px"><button class="btn" onclick="genBuild(${i})">Собрать ролик</button></div>
+    </div>`).join('')}
+  ${g ? `<div class="panel" style="border-color:#3a2b1f">
+    <div class="row sb"><div class="h" style="font-size:15px">Пакет к публикации</div>
+      <span class="tag" style="color:${g.compliance.allowedToPublish ? 'var(--ok)' : 'var(--danger)'}">${g.compliance.allowedToPublish ? 'права чисты' : 'есть блокеры'}</span></div>
+    <div class="sub" style="margin-top:4px">балл ${g.before.total} → ${g.after.total} · ${g.beats.reduce((a, b) => a + (b.end - b.start), 0)}с · ${g.beats.length} битов · ${GEN.research.length ? 'статистика нишы' : 'офлайн-шаблоны'}</div>
+    <div style="margin-top:8px">${[['хук', g.before.hook, g.after.hook], ['ритм', g.before.pacing, g.after.pacing], ['раскрытие', g.before.payoff, g.after.payoff], ['удержание', g.before.retention, g.after.retention], ['монетизация', g.before.monetization, g.after.monetization]].map(([k, b, a]) => `<div class="row" style="gap:8px;align-items:center;padding:1px 0"><span style="width:112px;font-size:10.5px;color:var(--t3)">${k} ${b}→${a}</span><div class="bar grow"><i style="width:${a}%;background:${a >= 75 ? 'var(--ok)' : a >= 50 ? 'var(--amber)' : 'var(--danger)'}"></i></div></div>`).join('')}</div>
+    <div class="h" style="font-size:13px;margin-top:12px">Скелет по битам</div>
+    ${g.beats.map(b => `<div class="row" style="align-items:flex-start;padding:3px 0;gap:8px"><span style="width:58px;font-size:10.5px;color:var(--t3)">${b.start}–${b.end}с</span><div class="grow"><div style="font-size:12.5px;font-weight:700">${LAB.ROLE_LABEL[b.role]}${b.overlay ? ' · «' + b.overlay + '»' : ''}</div><div class="sub">${b.voice}</div><div class="sub" style="color:var(--t3)">${b.screen}</div></div></div>`).join('')}
+    ${g.edits.length ? `<div class="h" style="font-size:13px;margin-top:12px">Правки монтажёра</div>${g.edits.map(e => `<div style="padding:4px 0"><div style="font-size:12.5px;font-weight:700;color:var(--amber)">${e.action} <span style="font-weight:600">(+${e.delta})</span></div><div class="sub">было: ${e.before}</div><div class="sub">стало: ${e.after}</div><div class="sub" style="color:var(--t3)">${e.reason}</div></div>`).join('')}` : ''}
+    <div class="h" style="font-size:13px;margin-top:12px">Материалы и лицензии</div>
+    ${g.assets.map(a => `<div class="row" style="gap:8px;padding:2px 0;align-items:flex-start"><span style="color:${['NEEDS_PERMISSION', 'REPOSTED'].includes(a.license) ? 'var(--danger)' : 'var(--ok)'}">${['NEEDS_PERMISSION', 'REPOSTED'].includes(a.license) ? '✕' : '✓'}</span><div class="grow"><div style="font-size:12.5px;font-weight:700">${a.id} · ${a.kind}</div><div class="sub">${a.license} · ${(a.query || '').slice(0, 110)}</div></div></div>`).join('')}
+    <div class="h" style="font-size:13px;margin-top:12px">Проверка перед публикацией</div>
+    ${g.compliance.checks.map(c => `<div class="row" style="gap:8px;padding:2px 0;align-items:flex-start"><span style="color:${c.ok ? 'var(--ok)' : c.blocking ? 'var(--danger)' : 'var(--sun)'}">${c.ok ? '✓' : c.blocking ? '✕' : '!'}</span><div class="grow"><div class="sub">${c.rule}</div>${!c.ok && c.fix ? `<div class="sub" style="color:${c.blocking ? 'var(--danger)' : 'var(--t3)'}">${c.fix}</div>` : ''}</div></div>`).join('')}
+    <div class="h" style="font-size:13px;margin-top:12px">Упаковка</div>
+    <div style="font-weight:700;font-size:13.5px;margin-top:4px">${g.pack.title}</div>
+    <div class="sub" style="white-space:pre-wrap">${g.pack.description}</div>
+    <div class="sub" style="color:var(--t3)">Теги: ${g.pack.tags.join(', ')} · закреп: ${g.pack.pinned}</div>
+    <div class="sub" style="color:var(--t3)">Превьюха: ${g.pack.thumbnailBrief}</div>
+    <div class="row" style="margin-top:12px">
+      <button class="btn ${g.compliance.allowedToPublish ? 'ok' : 'ghost'}" onclick="genEnqueue()" ${g.compliance.allowedToPublish ? '' : 'disabled'}>В очередь публикации</button>
+      <button class="btn ghost" onclick="genReedit()">Ещё правки</button>
+      <button class="btn ghost" onclick="GEN.showRecipe=!GEN.showRecipe;render()">${GEN.showRecipe ? 'Скрыть сборку' : 'Как собирать'}</button>
+    </div>
+    ${GEN.showRecipe ? `<div class="sub" style="margin-top:8px">${g.recipe.notes}</div><pre style="background:#0d1017;border:1px solid var(--line);border-radius:10px;padding:10px;font-size:10.5px;overflow:auto;color:#d7e0f5">${g.recipe.script}\n\n${g.recipe.srt}</pre>` : ''}
+  </div>` : ''}
+  <div class="panel soft"><div class="sub">Ниша из профиля: ${S.profile.niche}. В APK этот экран читает ${GEN.research.length ? 'кэш YouTube Data API' : 'демо-приоры'} и пишет пакет в тот же JSON, что и смена.</div></div>`;
+}
+
 window.togglePb=togglePb; window.approve=approve; window.skip=skip; window.published=published;
 window.startShift=startShift; window.pauseShift=pauseShift; window.stopShift=stopShift;
 window.importCsv=importCsv; window.PLAT_SET=()=>{};
+window.GEN=GEN; window.LAB=LAB; window.genNiche=genNiche; window.genFormat=genFormat; window.genDuration=genDuration;
+window.genGenerate=genGenerate; window.genBuild=genBuild; window.genReedit=genReedit; window.genEnqueue=genEnqueue; window.genResearch=genResearch;
 render();
 
 
@@ -717,5 +1224,6 @@ if (typeof globalThis.__WORKDAY_TEST_HOOK__ === 'function') {
     viewShift, viewAgents, viewTasks, viewGrowth, viewSettings,
     SHIFT_START, SHIFT_END,
     A, viewAuth, viewLock, viewAccount, linkStart, doSignIn, doRegister, doReset, tryUnlock,
+    LAB, GEN, viewGeneration, genNiche, genFormat, genDuration, genResearch, genGenerate, genBuild, genReedit, genEnqueue,
   });
 }

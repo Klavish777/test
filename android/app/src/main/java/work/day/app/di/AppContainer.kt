@@ -22,11 +22,14 @@ import work.day.app.data.llm.LlmSettings
 import work.day.app.data.llm.OfflineLlm
 import work.day.app.data.llm.OpenAiCompatLlm
 import work.day.app.data.platform.YouTubeDataApi
+import work.day.app.data.platform.YouTubeResearch
+import work.day.app.data.repo.GenerationRepository
 import work.day.app.data.repo.SettingsRepository
 import work.day.app.data.repo.Workspace
 import work.day.app.data.repo.WorkspaceRepository
 import work.day.app.domain.engine.ShiftEngine
 import work.day.app.domain.model.AuthClients
+import work.day.app.domain.model.GenerationState
 import work.day.app.domain.model.Session
 
 /**
@@ -102,8 +105,36 @@ class AppContainer(private val app: Application) {
 
     val engine: ShiftEngine by lazy { ShiftEngine(this, rootScope) }
 
+    // ─── «Генерация»: темы, скелеты роликов, правки монтажёра, рецепты сборки ───
+
+    private val generationStore: PersistedStore<GenerationState> by lazy {
+        PersistedStore(
+            file = File(app.filesDir, "work_day/generation.json"),
+            serializer = GenerationState.serializer(),
+            json = json,
+            scope = rootScope,
+        ) { GenerationState() }
+    }
+
+    private val researchClient = YouTubeResearch()
+
+    val generation: GenerationRepository by lazy {
+        GenerationRepository(generationStore, settings, workspace, { llm() }, researchClient)
+    }
+
     private val _messages = MutableSharedFlow<String>(extraBufferCapacity = 8)
     val messages: SharedFlow<String> = _messages.asSharedFlow()
+
+    /**
+     * Ошибка входа отдельным состоянием: экран входа и экран замка рисуются до Scaffold,
+     * поэтому снакбар там физически не смонтирован и сообщение просто исчезало.
+     */
+    private val _authError = MutableStateFlow<String?>(null)
+    val authError: StateFlow<String?> = _authError.asStateFlow()
+
+    fun authError(text: String?) {
+        _authError.value = text
+    }
 
     fun notifyAuth(text: String) {
         _messages.tryEmit(text)
@@ -152,6 +183,7 @@ class AppContainer(private val app: Application) {
         store.flush()
         sessionStore.flush()
         clientsStore.flush()
+        generationStore.flush()
     }
 
     fun exportJson(): String = json.encodeToString(Workspace.serializer(), store.value)
@@ -161,10 +193,14 @@ class AppContainer(private val app: Application) {
         it.copy(passwordHash = "", passwordSalt = "")
     }
 
+    /** Полный сброс: включая клиенты авторизации — в них живёт TikTok client secret. */
     fun wipeAll() {
         store.replace(Workspace())
         sessionStore.replace(Session())
+        clientsStore.replace(AuthClients())
+        generationStore.replace(GenerationState())
         secureStore.clear()
+        _authError.value = null
         persistFlush()
     }
 }
