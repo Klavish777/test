@@ -67,6 +67,9 @@ jobs:
           git config user.email "workday-ci@users.noreply.github.com"
           git add -f ci-build.log
           git commit -q -m "ci: лог сборки [skip ci]" || echo "нечего пушить"
+          # гонка с пользовательским пушем — тянем ветку и переприкручиваем, иначе лог потеряется
+          git -c user.name="workday-ci" -c user.email="workday-ci@users.noreply.github.com" \
+            pull -q --rebase origin ${{ github.ref_name }} || true
           git push -q origin HEAD:${{ github.ref_name }} || echo "пуш лога не удался"
 
       - name: Проверить APK
