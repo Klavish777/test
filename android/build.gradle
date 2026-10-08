@@ -1,0 +1,4 @@
+// Корневой build-файл. Без плагинов — всё подключается в app/build.gradle.
+tasks.register('clean', Delete) {
+    delete rootProject.buildDir
+}

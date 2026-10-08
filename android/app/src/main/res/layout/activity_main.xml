@@ -1,0 +1,121 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="#0F1115">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:padding="20dp">
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="@string/app_title"
+            android:textColor="#E6E8EE"
+            android:textSize="21sp"
+            android:textStyle="bold" />
+
+        <TextView
+            android:id="@+id/noticeText"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:textColor="#9AA3B2"
+            android:textSize="13sp" />
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="20dp"
+            android:text="Адрес панели"
+            android:textColor="#9AA3B2"
+            android:textSize="12sp"
+            android:textAllCaps="true" />
+
+        <EditText
+            android:id="@+id/serverEdit"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:autofillHints="url"
+            android:background="#171A21"
+            android:hint="http://192.168.1.10:8000"
+            android:inputType="textUri"
+            android:padding="12dp"
+            android:textColor="#E6E8EE"
+            android:textColorHint="#5A6273"
+            android:textSize="15sp" />
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="16dp"
+            android:text="Имя устройства"
+            android:textColor="#9AA3B2"
+            android:textSize="12sp"
+            android:textAllCaps="true" />
+
+        <EditText
+            android:id="@+id/nameEdit"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:background="#171A21"
+            android:hint="Телефон 1"
+            android:inputType="text"
+            android:padding="12dp"
+            android:textColor="#E6E8EE"
+            android:textColorHint="#5A6273"
+            android:textSize="15sp" />
+
+        <Switch
+            android:id="@+id/autoSwitch"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="18dp"
+            android:text="Автоотчёт каждые 15 минут"
+            android:textColor="#E6E8EE"
+            android:textSize="15sp" />
+
+        <Button
+            android:id="@+id/sendBtn"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="18dp"
+            android:backgroundTint="#2F6FEB"
+            android:text="Отправить отчёт"
+            android:textColor="#FFFFFF"
+            android:textSize="15sp" />
+
+        <Button
+            android:id="@+id/refreshBtn"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:backgroundTint="#171A21"
+            android:text="Обновить данные"
+            android:textColor="#E6E8EE"
+            android:textSize="15sp" />
+
+        <TextView
+            android:id="@+id/infoText"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="22dp"
+            android:background="#171A21"
+            android:padding="14dp"
+            android:textColor="#E6E8EE"
+            android:textSize="14sp"
+            android:lineSpacingExtra="4dp" />
+
+        <TextView
+            android:id="@+id/statusText"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="12dp"
+            android:textColor="#9AA3B2"
+            android:textSize="13sp" />
+
+    </LinearLayout>
+</ScrollView>
