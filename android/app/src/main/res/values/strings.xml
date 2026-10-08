@@ -1,0 +1,8 @@
+<resources>
+    <string name="app_name">Work Day</string>
+    <string name="tab_shift">Смена</string>
+    <string name="tab_agents">Агенты</string>
+    <string name="tab_tasks">Задачи</string>
+    <string name="tab_growth">Рост</string>
+    <string name="tab_settings">Настройки</string>
+</resources>

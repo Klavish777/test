@@ -1,0 +1,11 @@
+{
+  "name": "workday-preview",
+  "private": true,
+  "version": "0.1.0",
+  "description": "Кликабельный прототип интерфейса Work Day + тест движка смены",
+  "type": "module",
+  "scripts": {
+    "test": "node --test engine.test.js",
+    "serve": "python3 -m http.server 8137 --bind 0.0.0.0"
+  }
+}

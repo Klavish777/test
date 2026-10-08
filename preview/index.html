@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Work Day · смена AI-агентов для YouTube и TikTok</title>
+<style>
+:root{
+  --ink0:#080a10; --ink1:#0e1119; --ink2:#161a26; --ink3:#222839; --line:#2a3143;
+  --t1:#eef1f8; --t2:#9aa4bf; --t3:#6b7591;
+  --violet:#5b5cff; --mint:#12b886; --amber:#ff8a3d; --sun:#ffd23f; --danger:#ff5c7a; --ok:#4ade80;
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;height:100%}
+body{
+  background:radial-gradient(1200px 700px at 15% -10%, #1a1f3a 0%, transparent 60%),
+             radial-gradient(900px 600px at 90% 10%, #10231f 0%, transparent 55%), var(--ink0);
+  color:var(--t1);
+  font:15px/1.45 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;
+  display:flex; align-items:center; justify-content:center; gap:34px; padding:24px 18px;
+  min-height:100%;
+}
+.hint{max-width:330px;color:var(--t2);font-size:13px}
+.hint h1{font-size:22px;margin:0 0 8px;color:var(--t1);letter-spacing:-.4px}
+.hint code{background:var(--ink2);padding:1px 5px;border-radius:5px;color:var(--t1);font-size:12px}
+.hint .warn{margin-top:12px;padding:10px 12px;border:1px solid #3a2431;border-radius:10px;background:#170f14;color:#ffc2ce;font-size:12px}
+
+/* ── телефон ── */
+.phone{width:390px;max-width:100vw;height:min(844px,94vh);background:var(--ink0);
+  border:1px solid var(--line);border-radius:38px;box-shadow:0 40px 90px rgba(0,0,0,.6),inset 0 0 0 6px #05070c;
+  overflow:hidden;display:flex;flex-direction:column;position:relative}
+.notch{position:absolute;top:8px;left:50%;transform:translateX(-50%);width:104px;height:22px;background:#05070c;border-radius:12px;z-index:40}
+.statusbar{display:flex;justify-content:space-between;align-items:center;padding:12px 20px 4px;font-size:11px;color:var(--t3);letter-spacing:.3px}
+.screen{flex:1;overflow-y:auto;overflow-x:hidden;padding:8px 14px 16px;scrollbar-width:thin}
+.screen::-webkit-scrollbar{width:0}
+.tabbar{display:flex;background:var(--ink1);border-top:1px solid var(--line);padding:6px 4px calc(6px + env(safe-area-inset-bottom))}
+.tabbar button{flex:1;background:none;border:0;color:var(--t3);font:600 10.5px/1.2 inherit;padding:7px 2px 8px;border-radius:12px;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:4px}
+.tabbar button svg{width:19px;height:19px;stroke:currentColor;fill:none;stroke-width:1.8}
+.tabbar button.on{color:var(--t1);background:var(--ink2)}
+.tabbar .badge{position:absolute;transform:translate(11px,-7px);background:var(--sun);color:#20180a;font:700 9px/14px inherit;min-width:14px;height:14px;border-radius:8px;padding:0 3px}
+
+/* ── общие блоки ── */
+.panel{background:var(--ink1);border:1px solid var(--line);border-radius:18px;padding:14px;margin-bottom:12px}
+.panel.soft{background:var(--ink2)}
+.panel.acc{border-color:#39406a}
+.h{font-size:16.5px;font-weight:700;letter-spacing:-.2px;margin:0 0 3px}
+.sub{font-size:11.5px;color:var(--t2);margin:0}
+.row{display:flex;align-items:center;gap:9px}
+.row.sb{justify-content:space-between}
+.grow{flex:1;min-width:0}
+.mono{font-variant-numeric:tabular-nums}
+.ava{width:36px;height:36px;border-radius:12px;display:grid;place-items:center;font-size:17px;flex:none}
+.pill{border:0;border-radius:999px;padding:5px 10px;font:600 11px/1 inherit;background:rgba(255,255,255,.06);color:var(--t2);cursor:pointer;white-space:nowrap}
+.pill.on{color:#0b0e14}
+.bar{height:6px;border-radius:999px;background:var(--ink3);overflow:hidden}
+.bar i{display:block;height:100%;border-radius:999px;transition:width .25s linear}
+.btn{border:0;border-radius:13px;padding:11px 14px;font:600 13px/1 inherit;cursor:pointer;background:var(--violet);color:#fff}
+.btn.ghost{background:transparent;border:1px solid var(--line);color:var(--t1)}
+.btn.ok{background:var(--ok);color:#06231a}
+.btn:disabled{opacity:.4;cursor:default}
+.chips{display:flex;gap:7px;flex-wrap:wrap}
+.stat{font-size:11px;color:var(--t3);text-transform:uppercase;letter-spacing:.4px}
+.stat b{display:block;font-size:18px;color:var(--t1);font-weight:700;margin-top:3px;letter-spacing:-.3px}
+.feed{max-height:250px;overflow-y:auto;margin-top:4px}
+.ev{display:flex;gap:8px;padding:7px 9px;border-radius:11px;background:var(--ink2);margin-bottom:6px;font-size:12px;align-items:flex-start}
+.ev .c{color:var(--t3);font-variant-numeric:tabular-nums;flex:none;font-size:11px;padding-top:1px}
+.ev.warn{background:#241a12;color:#ffd9b8}
+.ev.approval{background:#232014;color:#ffea9f}
+.ev.done{color:#bff2cf}
+.task{background:var(--ink1);border:1px solid var(--line);border-radius:16px;padding:12px;margin-bottom:10px}
+.task.out{background:var(--ink2);border-radius:12px;padding:10px;font-size:12px;color:var(--t2);white-space:pre-wrap;line-height:1.5;margin-top:9px;max-height:120px;overflow:auto}
+.task.out.full{max-height:none;color:var(--t1)}
+.tag{font-size:10.5px;padding:3px 8px;border-radius:999px;background:rgba(255,255,255,.05);color:var(--t2)}
+.playbook{display:flex;gap:10px;align-items:flex-start;padding:8px 0;border-bottom:1px dashed #232a3d}
+.playbook:last-child{border-bottom:0}
+.check{width:18px;height:18px;border-radius:6px;flex:none;margin-top:2px;border:1.5px solid var(--line);cursor:pointer}
+.check.on{border-color:transparent}
+.field{width:100%;background:var(--ink2);border:1px solid var(--line);border-radius:12px;color:var(--t1);font:inherit;font-size:13px;padding:10px 12px;margin-top:6px}
+textarea.field{min-height:74px;resize:vertical;font-size:12px}
+.lbl{font-size:11px;color:var(--t3);margin-top:10px;display:block}
+.switch{width:38px;height:22px;border-radius:999px;background:var(--ink3);position:relative;cursor:pointer;flex:none;transition:background .15s}
+.switch i{position:absolute;top:3px;left:3px;width:16px;height:16px;border-radius:50%;background:#fff;transition:transform .15s}
+.switch.on{background:var(--violet)}.switch.on i{transform:translateX(16px)}
+.sec{font-size:11px;text-transform:uppercase;letter-spacing:.5px;color:var(--t3);margin:16px 2px 8px;font-weight:600}
+.toast{position:absolute;left:50%;bottom:86px;transform:translate(-50%,14px);background:#eef1f8;color:#0b0e14;padding:9px 14px;border-radius:12px;font-size:12px;font-weight:600;opacity:0;transition:.25s;z-index:60;max-width:80%;text-align:center}
+.toast.on{opacity:1;transform:translate(-50%,0)}
+.hidden{display:none!important}
+@media (max-width:760px){.hint{display:none}body{padding:0}.phone{border:0;border-radius:0;height:100vh;width:100%}}
+</style>
+</head>
+<body>
+
+<div class="hint">
+  <h1>Work Day</h1>
+  <p>Прототип Android-приложения: четыре AI-агента ведут рабочий день канала на YouTube и TikTok. Слева вверху — <b>Смена</b>: нажми «Начать смену» и смотри, как агенты планируют, генерируют материалы и останавливаются на твоём одобрении.</p>
+  <p style="margin-top:10px">Реальные исходники того же приложения: <code>android/app/src/main/java/work/day/app</code> (Kotlin + Jetpack Compose).</p>
+  <div class="warn">Агенты <b>не накручивают</b> просмотры, подписчиков и лайки и не публикуют сами. Накрутка = бан канала и обнуление охватов, поэтому прав на запись в приложении нет вообще.</div>
+</div>
+
+<div class="phone">
+  <div class="notch"></div>
+  <div class="statusbar"><span id="sbClock">09:00</span><span>Work Day · смена</span><span>98%</span></div>
+  <div class="screen" id="screen"></div>
+  <nav class="tabbar" id="tabbar"></nav>
+  <div class="toast" id="toast"></div>
+</div>
+
+<script src="app.js"></script>
+</body>
+</html>
