@@ -1,0 +1,52 @@
+## Что упало
+e: file:///home/runner/work/test/test/android/app/src/main/java/work/day/app/data/repo/GenerationRepository.kt:140:9 Initializer required for destructuring declaration.
+e: file:///home/runner/work/test/test/android/app/src/main/java/work/day/app/data/repo/GenerationRepository.kt:140:14 Syntax error: Expecting a name.
+e: file:///home/runner/work/test/test/android/app/src/main/java/work/day/app/data/repo/GenerationRepository.kt:140:15 Syntax error: Expecting ')'.
+e: file:///home/runner/work/test/test/android/app/src/main/java/work/day/app/data/repo/GenerationRepository.kt:140:20 Syntax error: Unexpected tokens (use ';' to separate expressions on the same line).
+e: file:///home/runner/work/test/test/android/app/src/main/java/work/day/app/data/repo/GenerationRepository.kt:141:44 Unresolved reference 'beats'.
+e: file:///home/runner/work/test/test/android/app/src/main/java/work/day/app/data/repo/GenerationRepository.kt:141:58 Argument type mismatch: actual type is 'kotlin.Unit', but 'kotlin.collections.List<work.day.app.domain.model.AssetSpec>' was expected.
+e: file:///home/runner/work/test/test/android/app/src/main/java/work/day/app/data/repo/GenerationRepository.kt:141:58 Expression expected, but package name found.
+e: file:///home/runner/work/test/test/android/app/src/main/java/work/day/app/data/repo/GenerationRepository.kt:142:51 Unresolved reference 'beats'.
+e: file:///home/runner/work/test/test/android/app/src/main/java/work/day/app/data/repo/GenerationRepository.kt:143:53 Unresolved reference 'beats'.
+e: file:///home/runner/work/test/test/android/app/src/main/java/work/day/app/data/repo/GenerationRepository.kt:143:60 Argument type mismatch: actual type is 'kotlin.Unit', but 'kotlin.collections.List<work.day.app.domain.model.AssetSpec>' was expected.
+e: file:///home/runner/work/test/test/android/app/src/main/java/work/day/app/data/repo/GenerationRepository.kt:143:60 Expression expected, but package name found.
+e: file:///home/runner/work/test/test/android/app/src/main/java/work/day/app/data/repo/GenerationRepository.kt:144:45 Unresolved reference 'beats'.
+e: file:///home/runner/work/test/test/android/app/src/main/java/work/day/app/data/repo/GenerationRepository.kt:144:52 Argument type mismatch: actual type is 'kotlin.Unit', but 'kotlin.collections.List<work.day.app.domain.model.AssetSpec>' was expected.
+e: file:///home/runner/work/test/test/android/app/src/main/java/work/day/app/data/repo/GenerationRepository.kt:144:52 Expression expected, but package name found.
+e: file:///home/runner/work/test/test/android/app/src/main/java/work/day/app/data/repo/GenerationRepository.kt:149:21 Unresolved reference 'beats'.
+e: file:///home/runner/work/test/test/android/app/src/main/java/work/day/app/data/repo/GenerationRepository.kt:150:21 Unresolved reference 'edits'.
+e: file:///home/runner/work/test/test/android/app/src/main/java/work/day/app/data/repo/GenerationRepository.kt:151:22 Argument type mismatch: actual type is 'kotlin.Unit', but 'kotlin.collections.List<work.day.app.domain.model.AssetSpec>' was expected.
+e: file:///home/runner/work/test/test/android/app/src/main/java/work/day/app/data/repo/GenerationRepository.kt:151:22 Expression expected, but package name found.
+e: file:///home/runner/work/test/test/android/app/src/main/java/work/day/app/domain/agent/ViralEditor.kt:118:32 Const 'val' initializer should be a constant value.
+e: file:///home/runner/work/test/test/android/app/src/main/java/work/day/app/domain/engine/ViralLab.kt:502:27 Unresolved reference 'keepс'.
+FAILURE: Build failed with an exception.
+* What went wrong:
+Caused by: org.gradle.workers.internal.DefaultWorkerExecutor$WorkExecutionException: A failure occurred while executing org.jetbrains.kotlin.compilerRunner.GradleCompilerRunnerWithWorkers$GradleKotlinCompilerWorkAction
+Caused by: org.jetbrains.kotlin.gradle.tasks.CompilationErrorException: Compilation error. See log for more details
+
+## Хвост лога
+	at org.gradle.workers.internal.AbstractWorker$1.call(AbstractWorker.java:41)
+	at org.gradle.internal.operations.DefaultBuildOperationRunner$CallableBuildOperationWorker.execute(DefaultBuildOperationRunner.java:209)
+	at org.gradle.internal.operations.DefaultBuildOperationRunner$CallableBuildOperationWorker.execute(DefaultBuildOperationRunner.java:204)
+	at org.gradle.internal.operations.DefaultBuildOperationRunner$2.execute(DefaultBuildOperationRunner.java:66)
+	at org.gradle.internal.operations.DefaultBuildOperationRunner$2.execute(DefaultBuildOperationRunner.java:59)
+	at org.gradle.internal.operations.DefaultBuildOperationRunner.execute(DefaultBuildOperationRunner.java:166)
+	at org.gradle.internal.operations.DefaultBuildOperationRunner.execute(DefaultBuildOperationRunner.java:59)
+	at org.gradle.internal.operations.DefaultBuildOperationRunner.call(DefaultBuildOperationRunner.java:53)
+	at org.gradle.workers.internal.AbstractWorker.executeWrappedInBuildOperation(AbstractWorker.java:41)
+	at org.gradle.workers.internal.NoIsolationWorkerFactory$1.execute(NoIsolationWorkerFactory.java:59)
+	at org.gradle.workers.internal.DefaultWorkerExecutor.lambda$submitWork$0(DefaultWorkerExecutor.java:174)
+	at org.gradle.internal.work.DefaultConditionalExecutionQueue$ExecutionRunner.runExecution(DefaultConditionalExecutionQueue.java:194)
+	at org.gradle.internal.work.DefaultConditionalExecutionQueue$ExecutionRunner.access$700(DefaultConditionalExecutionQueue.java:127)
+	at org.gradle.internal.work.DefaultConditionalExecutionQueue$ExecutionRunner$1.run(DefaultConditionalExecutionQueue.java:169)
+	at org.gradle.internal.Factories$1.create(Factories.java:31)
+	at org.gradle.internal.work.DefaultWorkerLeaseService.withLocks(DefaultWorkerLeaseService.java:263)
+	at org.gradle.internal.work.DefaultWorkerLeaseService.runAsWorkerThread(DefaultWorkerLeaseService.java:127)
+	at org.gradle.internal.work.DefaultWorkerLeaseService.runAsWorkerThread(DefaultWorkerLeaseService.java:132)
+	at org.gradle.internal.work.DefaultConditionalExecutionQueue$ExecutionRunner.runBatch(DefaultConditionalExecutionQueue.java:164)
+	at org.gradle.internal.work.DefaultConditionalExecutionQueue$ExecutionRunner.run(DefaultConditionalExecutionQueue.java:133)
+	... 2 more
+
+
+BUILD FAILED in 1m 43s
+17 actionable tasks: 16 executed, 1 from cache
