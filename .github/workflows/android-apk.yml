@@ -64,3 +64,17 @@ jobs:
           name: farm-monitor-debug-apk
           path: android/app/build/outputs/apk/debug/*.apk
           retention-days: 30
+
+      - name: Опубликовать APK в релизах
+        if: steps.build.outcome == 'success'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          APK=android/app/build/outputs/apk/debug/app-debug.apk
+          gh release delete apk-latest --yes --cleanup-tag 2>/dev/null || true
+          gh release create apk-latest "$APK" \
+            --title "Мониторинг устройств — APK" \
+            --notes "Автоматическая сборка ветки ${{ github.ref_name }}.
+          Debug-сборка. Android 8.0 (API 26) и выше.
+          Приложение сообщает панели настоящий публичный IP, провайдера и тип подключения.
+          Оно не маскирует IP и не скрывает общий роутер."
