@@ -1,0 +1,120 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Мониторинг устройств</title>
+<style>
+  :root { --bg:#0f1115; --card:#171a21; --line:#252a34; --txt:#e6e8ee; --dim:#9aa3b2;
+          --ok:#3fbf7f; --warn:#e6b23c; --bad:#e5534b; }
+  * { box-sizing:border-box; }
+  body { margin:0; background:var(--bg); color:var(--txt);
+         font:15px/1.5 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial,sans-serif; }
+  .wrap { max-width:1040px; margin:0 auto; padding:28px 18px 60px; }
+  h1 { font-size:22px; margin:0 0 4px; }
+  .sub { color:var(--dim); font-size:13px; margin-bottom:22px; }
+  .cards { display:grid; grid-template-columns:repeat(auto-fit,minmax(150px,1fr)); gap:12px; margin-bottom:22px; }
+  .card { background:var(--card); border:1px solid var(--line); border-radius:12px; padding:14px 16px; }
+  .card .n { font-size:26px; font-weight:600; }
+  .card .l { color:var(--dim); font-size:12px; text-transform:uppercase; letter-spacing:.05em; }
+  .verdict { background:var(--card); border:1px solid var(--line); border-left:3px solid var(--warn);
+             border-radius:10px; padding:14px 16px; margin-bottom:22px; font-size:14px; }
+  .block { background:var(--card); border:1px solid var(--line); border-radius:12px;
+           padding:14px 16px; margin-bottom:12px; }
+  .block h2 { font-size:15px; margin:0 0 10px; display:flex; gap:10px; align-items:center; flex-wrap:wrap; }
+  code { background:#0b0d11; padding:1px 6px; border-radius:5px; font-size:13px; }
+  .tag { font-size:11px; padding:2px 8px; border-radius:20px; border:1px solid var(--line); color:var(--dim); }
+  .tag.ok   { color:var(--ok);   border-color:#1f4d36; background:#12241b; }
+  .tag.warn { color:var(--warn); border-color:#4d3f1f; background:#241f12; }
+  .tag.bad  { color:var(--bad);  border-color:#4d2120; background:#241414; }
+  table { width:100%; border-collapse:collapse; font-size:14px; }
+  td { padding:8px 6px; border-top:1px solid var(--line); vertical-align:top; }
+  td.r { color:var(--dim); font-size:13px; }
+  .empty { color:var(--dim); text-align:center; padding:36px 0; }
+  .notice { background:#12161d; border:1px solid var(--line); border-radius:10px;
+            padding:14px 16px; font-size:13px; color:var(--dim); margin-bottom:22px; }
+  .notice b { color:var(--txt); }
+  .cmd { background:#0b0d11; border:1px solid var(--line); border-radius:8px;
+         padding:10px 12px; font:12.5px/1.6 ui-monospace,SFMono-Regular,Menlo,monospace;
+         color:var(--txt); overflow-x:auto; margin-top:8px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>Мониторинг устройств</h1>
+  <div class="sub">Честная картина: какие устройства реально оплачиваются, а какие просто тратят электричество.</div>
+
+  <div class="notice">
+    <b>Как это работает.</b> Сервисы вроде Honeygain оплачивают <b>одно устройство на один публичный IP</b>.
+    Агент на каждом телефоне сообщает настоящий IP и провайдера — панель показывает, сколько устройств
+    делят один адрес и сколько денег вы теряете. Данные не подменяются и не маскируются: это диагностика,
+    а не способ обойти ограничения.
+  </div>
+
+  <div class="cards" id="cards"></div>
+  <div class="verdict" id="verdict">Загрузка…</div>
+  <div id="blocks"></div>
+
+  <div class="block">
+    <h2>Подключить устройство</h2>
+    <div style="color:var(--dim);font-size:13px">
+      На телефоне (Termux) или компьютере запустите агента — он сам определит публичный IP
+      и будет отправлять отчёт каждые 10 минут:
+      <div class="cmd">pip install httpx
+python agent/agent.py --server http://&lt;IP-ЭТОГО-КОМПЬЮТЕРА&gt;:8000 --name "Телефон 1"</div>
+    </div>
+  </div>
+</div>
+
+<script>
+const esc = s => (s ?? "").toString().replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const gb = n => (n ?? 0).toFixed(2);
+
+async function load() {
+  const r = await fetch('/api/devices');
+  const d = await r.json();
+
+  document.getElementById('cards').innerHTML = [
+    ['Устройств', d.total_devices, ''],
+    ['Уникальных IP', d.total_ips, ''],
+    ['Оплачивается', d.earning_devices, 'ok'],
+    ['Впустую', d.wasted_devices, d.wasted_devices ? 'bad' : ''],
+    ['Трафика, ГБ', d.total_gb, ''],
+    ['Оценка, $', `${d.earn_low}–${d.earn_high}`, ''],
+  ].map(([l,n,c]) => `<div class="card"><div class="n ${c}">${esc(n)}</div><div class="l">${l}</div></div>`).join('');
+
+  document.getElementById('verdict').textContent = d.verdict;
+
+  const blocks = document.getElementById('blocks');
+  if (!d.ip_blocks.length) {
+    blocks.innerHTML = '<div class="block"><div class="empty">Отчётов пока нет. Запустите агента на первом устройстве.</div></div>';
+    return;
+  }
+
+  blocks.innerHTML = d.ip_blocks.map(b => {
+    const tag = b.is_hosting
+      ? '<span class="tag bad">дата-центр</span>'
+      : (b.wasted ? `<span class="tag warn">${b.wasted} не оплачивается</span>`
+                  : '<span class="tag ok">оплачивается</span>');
+    const rows = b.devices.map(x => `
+      <tr>
+        <td><b>${esc(x.name)}</b><br><span class="r">${esc(x.conn_type || '—')} · ${gb((x.bytes_shared||0)/1073741824)} ГБ</span></td>
+        <td class="r">${esc(x.reason)}</td>
+        <td style="width:90px">${x.earning ? '<span class="tag ok">да</span>' : '<span class="tag bad">нет</span>'}</td>
+      </tr>`).join('');
+    return `<div class="block">
+      <h2><code>${esc(b.ip)}</code> ${tag}
+        <span class="tag">${esc(b.org || 'провайдер неизвестен')}</span>
+        ${b.country ? `<span class="tag">${esc(b.country)}</span>` : ''}
+        <span class="tag">${gb(b.total_gb)} ГБ</span>
+      </h2>
+      <table>${rows}</table>
+    </div>`;
+  }).join('');
+}
+
+load();
+setInterval(load, 15000);
+</script>
+</body>
+</html>

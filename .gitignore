@@ -1,0 +1,6 @@
+__pycache__/
+*.pyc
+.venv/
+venv/
+app/farm.db
+.DS_Store
