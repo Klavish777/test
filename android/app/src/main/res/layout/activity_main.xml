@@ -68,7 +68,7 @@
             android:orientation="vertical"
             android:padding="16dp">
 
-            <!-- ---------- ИДЕИ ---------- -->
+            <!-- ИДЕИ -->
             <LinearLayout
                 android:id="@+id/panelIdeas"
                 android:layout_width="match_parent"
@@ -146,7 +146,7 @@
                     android:visibility="gone" />
             </LinearLayout>
 
-            <!-- ---------- ПОСТ ---------- -->
+            <!-- ПОСТ -->
             <LinearLayout
                 android:id="@+id/panelPost"
                 android:layout_width="match_parent"
@@ -281,7 +281,7 @@
                     android:visibility="gone" />
             </LinearLayout>
 
-            <!-- ---------- ПЛАН ---------- -->
+            <!-- ПЛАН -->
             <LinearLayout
                 android:id="@+id/panelPlan"
                 android:layout_width="match_parent"
@@ -350,7 +350,7 @@
                     android:orientation="vertical" />
             </LinearLayout>
 
-            <!-- ---------- ЦИФРЫ ---------- -->
+            <!-- ЦИФРЫ -->
             <LinearLayout
                 android:id="@+id/panelStats"
                 android:layout_width="match_parent"
