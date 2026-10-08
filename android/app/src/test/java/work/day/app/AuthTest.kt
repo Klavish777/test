@@ -202,7 +202,9 @@ class AuthRepositoryTest {
         assertTrue(url.contains("youtube.readonly"))
         // ключевая граница продукта: права на запись приложение не запрашивает никогда
         val scopePart = java.net.URLDecoder.decode(url.substringAfter("scope=", "").substringBefore("&"), "UTF-8")
-        assertTrue("scope должен оставаться read-only: $scopePart", scopePart.all { it.isBlank() || it.contains("readonly") })
+        val granted = scopePart.split(' ', ',').map { it.trim() }.filter { it.isNotEmpty() }
+        assertTrue("scope пуст — значит, сборка_URL сломалась", granted.isNotEmpty())
+        assertTrue("чужое право в scope: $scopePart", granted.all { it.contains("readonly") })
         listOf("upload", "force-ssl", "insert", "update", "delete", "moderation").forEach { banned ->
             assertFalse("в scope просочилось право '$banned'", scopePart.contains(banned))
         }
@@ -222,7 +224,7 @@ class AuthRepositoryTest {
     }
 
     @Test
-    fun `tiktok: scope через запятую, stats — только когда включено явно`() {
+    fun `tiktok — scope через запятую, stats только когда включено явно`() {
         val f = Fixture()
         f.clients = AuthClients(tiktokClientKey = "awj2lid6")
         val scope = f.scopeOf(f.repo.beginLink(AuthProvider.TIKTOK).getOrThrow())
@@ -305,7 +307,7 @@ class AuthRepositoryTest {
         val f = Fixture(vault)
         f.repo.registerBlocking("me@kanal.ru", "passw0rd", "passw0rd")
         vault.set("tmp", "x")
-        f.repo.signOut()
+        f.repo.signOutBlocking()
         assertTrue(vault.snapshot().none { it.key.startsWith("access_") })
         assertEquals(emptyList<ProviderLink>(), f.session.links)
         assertEquals("", f.session.email)
@@ -346,6 +348,8 @@ private fun AuthRepository.registerBlocking(email: String, password: String, con
 private fun AuthRepository.signInBlocking(email: String, password: String) = runBlocking { signIn(email, password) }
 
 private fun AuthRepository.completeRedirectBlocking(uri: String) = runBlocking { completeRedirect(uri) }
+
+private fun AuthRepository.signOutBlocking() = runBlocking { signOut() }
 
 /** Тесту нужен тот же state, который репозиторий сгенерировал internally. */
 private fun AuthRepository.pendingStateForTest(): String {
