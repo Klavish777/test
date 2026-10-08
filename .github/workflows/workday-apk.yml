@@ -119,6 +119,22 @@ jobs:
 
       # Значения нужны, чтобы прописать вход в Google Cloud Console и assetlinks.json (docs/AUTH.md).
       # Ключ берётся из кэша выше, поэтому отпечаток совпадает от сборки к сборке.
+      # После зелёного прогона в ветке не должен оставаться лог предыдущего падения:
+      # он уже не о чём, а человек откроет файл и испугается.
+      - name: Убрать ci-build.log после зелёного прогона
+        if: success()
+        run: |
+          cd "$GITHUB_WORKSPACE"
+          if git ls-files --error-unmatch ci-build.log >/dev/null 2>&1; then
+            git config user.name "workday-ci"
+            git config user.email "workday-ci@users.noreply.github.com"
+            git rm -q ci-build.log
+            git commit -q -m "ci: сборка зелёная — лог прошлого падения больше не нужен [skip ci]" || echo "нечего пушить"
+            git push -q origin HEAD:${{ github.ref_name }} || echo "пуш не удался"
+          else
+            echo "ci-build.log в дереве не лежит — чистим нечего"
+          fi
+
       - name: Отпечатки ключа сборки
         if: steps.apk.outcome == 'success'
         run: |
