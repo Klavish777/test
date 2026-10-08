@@ -3,11 +3,11 @@ plugins {
 }
 
 android {
-    namespace 'com.example.creatorkit'
+    namespace 'com.example.workday'
     compileSdk 34
 
     defaultConfig {
-        applicationId "com.example.creatorkit"
+        applicationId "com.example.workday"
         minSdk 26
         targetSdk 34
         versionCode 1

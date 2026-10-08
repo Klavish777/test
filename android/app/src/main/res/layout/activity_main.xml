@@ -5,57 +5,78 @@
     android:background="#0F1115"
     android:orientation="vertical">
 
-    <LinearLayout
+    <HorizontalScrollView
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:background="#12161D"
-        android:orientation="horizontal"
-        android:padding="6dp">
+        android:background="#12161D">
 
-        <Button
-            android:id="@+id/tabIdeas"
-            android:layout_width="0dp"
+        <LinearLayout
+            android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:layout_weight="1"
-            android:backgroundTint="#2F6FEB"
-            android:text="Идеи"
-            android:textAllCaps="false"
-            android:textColor="#FFFFFF"
-            android:textSize="13sp" />
+            android:orientation="horizontal"
+            android:padding="6dp">
 
-        <Button
-            android:id="@+id/tabPost"
-            android:layout_width="0dp"
-            android:layout_height="wrap_content"
-            android:layout_weight="1"
-            android:backgroundTint="#171A21"
-            android:text="Пост"
-            android:textAllCaps="false"
-            android:textColor="#E6E8EE"
-            android:textSize="13sp" />
+            <Button
+                android:id="@+id/tabDay"
+                style="?android:attr/buttonBarButtonStyle"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:backgroundTint="#2F6FEB"
+                android:minWidth="92dp"
+                android:text="День"
+                android:textAllCaps="false"
+                android:textColor="#FFFFFF"
+                android:textSize="13sp" />
 
-        <Button
-            android:id="@+id/tabPlan"
-            android:layout_width="0dp"
-            android:layout_height="wrap_content"
-            android:layout_weight="1"
-            android:backgroundTint="#171A21"
-            android:text="План"
-            android:textAllCaps="false"
-            android:textColor="#E6E8EE"
-            android:textSize="13sp" />
+            <Button
+                android:id="@+id/tabAttract"
+                style="?android:attr/buttonBarButtonStyle"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:backgroundTint="#171A21"
+                android:minWidth="104dp"
+                android:text="Привлечь"
+                android:textAllCaps="false"
+                android:textColor="#E6E8EE"
+                android:textSize="13sp" />
 
-        <Button
-            android:id="@+id/tabStats"
-            android:layout_width="0dp"
-            android:layout_height="wrap_content"
-            android:layout_weight="1"
-            android:backgroundTint="#171A21"
-            android:text="Цифры"
-            android:textAllCaps="false"
-            android:textColor="#E6E8EE"
-            android:textSize="13sp" />
-    </LinearLayout>
+            <Button
+                android:id="@+id/tabGrow"
+                style="?android:attr/buttonBarButtonStyle"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:backgroundTint="#171A21"
+                android:minWidth="92dp"
+                android:text="Рост"
+                android:textAllCaps="false"
+                android:textColor="#E6E8EE"
+                android:textSize="13sp" />
+
+            <Button
+                android:id="@+id/tabActivity"
+                style="?android:attr/buttonBarButtonStyle"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:backgroundTint="#171A21"
+                android:minWidth="112dp"
+                android:text="Активность"
+                android:textAllCaps="false"
+                android:textColor="#E6E8EE"
+                android:textSize="13sp" />
+
+            <Button
+                android:id="@+id/tabPlan"
+                style="?android:attr/buttonBarButtonStyle"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:backgroundTint="#171A21"
+                android:minWidth="92dp"
+                android:text="План"
+                android:textAllCaps="false"
+                android:textColor="#E6E8EE"
+                android:textSize="13sp" />
+        </LinearLayout>
+    </HorizontalScrollView>
 
     <ScrollView
         android:layout_width="match_parent"
@@ -68,66 +89,109 @@
             android:orientation="vertical"
             android:padding="16dp">
 
-            <!-- ИДЕИ -->
             <LinearLayout
-                android:id="@+id/panelIdeas"
+                android:id="@+id/panelDay"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:orientation="vertical">
 
                 <TextView
+                    android:id="@+id/dayHeader"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:text="Ниша"
-                    android:textColor="#9AA3B2"
-                    android:textSize="12sp"
-                    android:textAllCaps="true" />
-
-                <Spinner
-                    android:id="@+id/nicheSpin"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:layout_marginTop="4dp"
                     android:background="#171A21"
-                    android:popupBackground="#171A21" />
+                    android:lineSpacingExtra="3dp"
+                    android:padding="14dp"
+                    android:textColor="#E6E8EE"
+                    android:textSize="15sp" />
+
+                <LinearLayout
+                    android:id="@+id/routineList"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="12dp"
+                    android:orientation="vertical" />
 
                 <TextView
+                    android:id="@+id/rulesText"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:layout_marginTop="14dp"
-                    android:text="Тема (необязательно)"
+                    android:layout_marginTop="16dp"
+                    android:background="#12161D"
+                    android:lineSpacingExtra="4dp"
+                    android:padding="14dp"
                     android:textColor="#9AA3B2"
-                    android:textSize="12sp"
-                    android:textAllCaps="true" />
+                    android:textSize="13sp" />
+            </LinearLayout>
+
+            <LinearLayout
+                android:id="@+id/panelAttract"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:visibility="gone">
 
                 <EditText
-                    android:id="@+id/kwEdit"
+                    android:id="@+id/attractTopic"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:layout_marginTop="4dp"
                     android:background="#171A21"
-                    android:hint="например: холодные звонки"
+                    android:hint="О чём ролик"
                     android:inputType="text"
                     android:padding="12dp"
                     android:textColor="#E6E8EE"
                     android:textColorHint="#5A6273"
                     android:textSize="15sp" />
 
-                <Button
-                    android:id="@+id/genIdeasBtn"
+                <Spinner
+                    android:id="@+id/attractPlatform"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:layout_marginTop="14dp"
+                    android:layout_marginTop="8dp"
+                    android:background="#171A21"
+                    android:popupBackground="#171A21" />
+
+                <Spinner
+                    android:id="@+id/attractNiche"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="8dp"
+                    android:background="#171A21"
+                    android:popupBackground="#171A21" />
+
+                <Spinner
+                    android:id="@+id/attractTone"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="8dp"
+                    android:background="#171A21"
+                    android:popupBackground="#171A21" />
+
+                <Button
+                    android:id="@+id/attractBtn"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="12dp"
                     android:backgroundTint="#2F6FEB"
-                    android:text="Придумать идеи"
+                    android:text="Крючки, заголовки, хэштеги"
                     android:textAllCaps="false"
                     android:textColor="#FFFFFF" />
 
-                <TextView
-                    android:id="@+id/ideasOut"
+                <Button
+                    android:id="@+id/attractCollabBtn"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:layout_marginTop="14dp"
+                    android:layout_marginTop="8dp"
+                    android:backgroundTint="#171A21"
+                    android:text="Кому написать для коллаборации"
+                    android:textAllCaps="false"
+                    android:textColor="#E6E8EE" />
+
+                <TextView
+                    android:id="@+id/attractOut"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="12dp"
                     android:background="#171A21"
                     android:lineSpacingExtra="4dp"
                     android:padding="14dp"
@@ -135,7 +199,7 @@
                     android:textSize="14sp" />
 
                 <Button
-                    android:id="@+id/copyIdeasBtn"
+                    android:id="@+id/attractCopy"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:layout_marginTop="8dp"
@@ -144,111 +208,151 @@
                     android:textAllCaps="false"
                     android:textColor="#E6E8EE"
                     android:visibility="gone" />
+
+                <Button
+                    android:id="@+id/attractShare"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="8dp"
+                    android:backgroundTint="#3FBF7F"
+                    android:text="Поделиться"
+                    android:textAllCaps="false"
+                    android:textColor="#0B0D11"
+                    android:visibility="gone" />
             </LinearLayout>
 
-            <!-- ПОСТ -->
             <LinearLayout
-                android:id="@+id/panelPost"
+                android:id="@+id/panelGrow"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:orientation="vertical"
                 android:visibility="gone">
 
-                <TextView
+                <Spinner
+                    android:id="@+id/growPlatform"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:text="О чём ролик"
+                    android:background="#171A21"
+                    android:popupBackground="#171A21" />
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="8dp"
+                    android:orientation="horizontal">
+
+                    <EditText
+                        android:id="@+id/growSubs"
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:background="#171A21"
+                        android:hint="Подписчики"
+                        android:inputType="number"
+                        android:padding="12dp"
+                        android:textColor="#E6E8EE"
+                        android:textColorHint="#5A6273"
+                        android:textSize="14sp" />
+
+                    <EditText
+                        android:id="@+id/growViews"
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_marginStart="8dp"
+                        android:layout_weight="1"
+                        android:background="#171A21"
+                        android:hint="Просмотры"
+                        android:inputType="number"
+                        android:padding="12dp"
+                        android:textColor="#E6E8EE"
+                        android:textColorHint="#5A6273"
+                        android:textSize="14sp" />
+                </LinearLayout>
+
+                <Button
+                    android:id="@+id/growAdd"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="10dp"
+                    android:backgroundTint="#2F6FEB"
+                    android:text="Сохранить снимок"
+                    android:textAllCaps="false"
+                    android:textColor="#FFFFFF" />
+
+                <TextView
+                    android:id="@+id/growSummary"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="12dp"
+                    android:background="#12161D"
+                    android:lineSpacingExtra="4dp"
+                    android:padding="14dp"
                     android:textColor="#9AA3B2"
-                    android:textSize="12sp"
-                    android:textAllCaps="true" />
+                    android:textSize="13sp" />
+
+                <LinearLayout
+                    android:id="@+id/growList"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="10dp"
+                    android:orientation="vertical" />
+            </LinearLayout>
+
+            <LinearLayout
+                android:id="@+id/panelActivity"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:visibility="gone">
+
+                <Spinner
+                    android:id="@+id/activityType"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:background="#171A21"
+                    android:popupBackground="#171A21" />
 
                 <EditText
-                    android:id="@+id/topicEdit"
+                    android:id="@+id/activityTopic"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:layout_marginTop="4dp"
+                    android:layout_marginTop="8dp"
                     android:background="#171A21"
-                    android:hint="например: как я снимаю видео на телефон"
+                    android:hint="О чём пост (необязательно)"
                     android:inputType="text"
                     android:padding="12dp"
                     android:textColor="#E6E8EE"
                     android:textColorHint="#5A6273"
                     android:textSize="15sp" />
 
-                <TextView
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:layout_marginTop="14dp"
-                    android:text="Площадка"
-                    android:textColor="#9AA3B2"
-                    android:textSize="12sp"
-                    android:textAllCaps="true" />
-
                 <Spinner
-                    android:id="@+id/platformSpin"
+                    android:id="@+id/activityNiche"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:layout_marginTop="4dp"
+                    android:layout_marginTop="8dp"
                     android:background="#171A21"
                     android:popupBackground="#171A21" />
 
-                <TextView
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:layout_marginTop="14dp"
-                    android:text="Ниша"
-                    android:textColor="#9AA3B2"
-                    android:textSize="12sp"
-                    android:textAllCaps="true" />
-
                 <Spinner
-                    android:id="@+id/nicheSpin2"
+                    android:id="@+id/activityPlatform"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:layout_marginTop="4dp"
-                    android:background="#171A21"
-                    android:popupBackground="#171A21" />
-
-                <TextView
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:layout_marginTop="14dp"
-                    android:text="Тон"
-                    android:textColor="#9AA3B2"
-                    android:textSize="12sp"
-                    android:textAllCaps="true" />
-
-                <Spinner
-                    android:id="@+id/toneSpin"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:layout_marginTop="4dp"
+                    android:layout_marginTop="8dp"
                     android:background="#171A21"
                     android:popupBackground="#171A21" />
 
                 <Button
-                    android:id="@+id/genPostBtn"
+                    android:id="@+id/activityBtn"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:layout_marginTop="14dp"
+                    android:layout_marginTop="12dp"
                     android:backgroundTint="#2F6FEB"
-                    android:text="Собрать описание"
+                    android:text="Собрать тексты"
                     android:textAllCaps="false"
                     android:textColor="#FFFFFF" />
 
                 <TextView
-                    android:id="@+id/cadenceText"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:layout_marginTop="12dp"
-                    android:background="#12161D"
-                    android:lineSpacingExtra="3dp"
-                    android:padding="12dp"
-                    android:textColor="#9AA3B2"
-                    android:textSize="13sp" />
-
-                <TextView
-                    android:id="@+id/postOut"
+                    android:id="@+id/activityOut"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:layout_marginTop="12dp"
@@ -259,29 +363,28 @@
                     android:textSize="14sp" />
 
                 <Button
-                    android:id="@+id/copyPostBtn"
+                    android:id="@+id/activityCopy"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:layout_marginTop="8dp"
                     android:backgroundTint="#171A21"
-                    android:text="Скопировать текст"
+                    android:text="Скопировать"
                     android:textAllCaps="false"
                     android:textColor="#E6E8EE"
                     android:visibility="gone" />
 
                 <Button
-                    android:id="@+id/sharePostBtn"
+                    android:id="@+id/activityShare"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:layout_marginTop="8dp"
                     android:backgroundTint="#3FBF7F"
-                    android:text="Поделиться описанием"
+                    android:text="Поделиться"
                     android:textAllCaps="false"
                     android:textColor="#0B0D11"
                     android:visibility="gone" />
             </LinearLayout>
 
-            <!-- ПЛАН -->
             <LinearLayout
                 android:id="@+id/panelPlan"
                 android:layout_width="match_parent"
@@ -290,7 +393,7 @@
                 android:visibility="gone">
 
                 <EditText
-                    android:id="@+id/planTopicEdit"
+                    android:id="@+id/planTopic"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:background="#171A21"
@@ -302,7 +405,7 @@
                     android:textSize="15sp" />
 
                 <Spinner
-                    android:id="@+id/planPlatformSpin"
+                    android:id="@+id/planPlatform"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:layout_marginTop="8dp"
@@ -310,7 +413,7 @@
                     android:popupBackground="#171A21" />
 
                 <EditText
-                    android:id="@+id/planDayEdit"
+                    android:id="@+id/planDay"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:layout_marginTop="8dp"
@@ -323,7 +426,7 @@
                     android:textSize="15sp" />
 
                 <Button
-                    android:id="@+id/addPlanBtn"
+                    android:id="@+id/planAdd"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:layout_marginTop="10dp"
@@ -348,20 +451,27 @@
                     android:layout_height="wrap_content"
                     android:layout_marginTop="10dp"
                     android:orientation="vertical" />
-            </LinearLayout>
 
-            <!-- ЦИФРЫ -->
-            <LinearLayout
-                android:id="@+id/panelStats"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:orientation="vertical"
-                android:visibility="gone">
+                <View
+                    android:layout_width="match_parent"
+                    android:layout_height="1dp"
+                    android:layout_marginTop="22dp"
+                    android:background="#252A34" />
 
-                <EditText
-                    android:id="@+id/statNameEdit"
+                <TextView
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
+                    android:layout_marginTop="18dp"
+                    android:text="Цифры ролика"
+                    android:textColor="#9AA3B2"
+                    android:textSize="12sp"
+                    android:textAllCaps="true" />
+
+                <EditText
+                    android:id="@+id/statName"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="6dp"
                     android:background="#171A21"
                     android:hint="Название ролика"
                     android:inputType="text"
@@ -371,7 +481,7 @@
                     android:textSize="15sp" />
 
                 <Spinner
-                    android:id="@+id/statPlatformSpin"
+                    android:id="@+id/statPlatform"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:layout_marginTop="8dp"
@@ -385,7 +495,7 @@
                     android:orientation="horizontal">
 
                     <EditText
-                        android:id="@+id/statViewsEdit"
+                        android:id="@+id/statViews"
                         android:layout_width="0dp"
                         android:layout_height="wrap_content"
                         android:layout_weight="1"
@@ -398,7 +508,7 @@
                         android:textSize="14sp" />
 
                     <EditText
-                        android:id="@+id/statLikesEdit"
+                        android:id="@+id/statLikes"
                         android:layout_width="0dp"
                         android:layout_height="wrap_content"
                         android:layout_marginStart="8dp"
@@ -419,7 +529,7 @@
                     android:orientation="horizontal">
 
                     <EditText
-                        android:id="@+id/statCommentsEdit"
+                        android:id="@+id/statComments"
                         android:layout_width="0dp"
                         android:layout_height="wrap_content"
                         android:layout_weight="1"
@@ -432,7 +542,7 @@
                         android:textSize="14sp" />
 
                     <EditText
-                        android:id="@+id/statSharesEdit"
+                        android:id="@+id/statShares"
                         android:layout_width="0dp"
                         android:layout_height="wrap_content"
                         android:layout_marginStart="8dp"
@@ -447,12 +557,12 @@
                 </LinearLayout>
 
                 <Button
-                    android:id="@+id/addStatBtn"
+                    android:id="@+id/statAdd"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:layout_marginTop="10dp"
                     android:backgroundTint="#2F6FEB"
-                    android:text="Сохранить"
+                    android:text="Сохранить цифры"
                     android:textAllCaps="false"
                     android:textColor="#FFFFFF" />
 
@@ -462,8 +572,8 @@
                     android:layout_height="wrap_content"
                     android:layout_marginTop="12dp"
                     android:background="#12161D"
-                    android:lineSpacingExtra="3dp"
-                    android:padding="12dp"
+                    android:lineSpacingExtra="4dp"
+                    android:padding="14dp"
                     android:textColor="#9AA3B2"
                     android:textSize="13sp" />
 

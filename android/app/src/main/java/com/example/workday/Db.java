@@ -1,4 +1,4 @@
-package com.example.creatorkit;
+package com.example.workday;
 
 import android.content.ContentValues;
 import android.content.Context;
@@ -9,10 +9,10 @@ import android.database.sqlite.SQLiteOpenHelper;
 import java.util.ArrayList;
 import java.util.List;
 
-/** План публикаций и аналитика, введённая вручную. */
+/** План публикаций, аналитика роликов, снимки роста и ежедневная рутина. */
 public final class Db extends SQLiteOpenHelper {
 
-    private static final String NAME = "creatorkit.db";
+    private static final String NAME = "workday.db";
     private static final int VER = 1;
 
     public Db(Context c) {
@@ -24,13 +24,63 @@ public final class Db extends SQLiteOpenHelper {
         d.execSQL("CREATE TABLE plans (_id INTEGER PRIMARY KEY, topic TEXT, platform TEXT, day TEXT, done INTEGER)");
         d.execSQL("CREATE TABLE stats (_id INTEGER PRIMARY KEY, name TEXT, platform TEXT, "
                 + "views INTEGER, likes INTEGER, comments INTEGER, shares INTEGER, day TEXT)");
+        d.execSQL("CREATE TABLE growth (_id INTEGER PRIMARY KEY, day TEXT, platform TEXT, "
+                + "subs INTEGER, views INTEGER)");
+        d.execSQL("CREATE TABLE routine (day TEXT, idx INTEGER, done INTEGER, "
+                + "PRIMARY KEY (day, idx))");
     }
 
     @Override
     public void onUpgrade(SQLiteDatabase d, int a, int b) {
         d.execSQL("DROP TABLE IF EXISTS plans");
         d.execSQL("DROP TABLE IF EXISTS stats");
+        d.execSQL("DROP TABLE IF EXISTS growth");
+        d.execSQL("DROP TABLE IF EXISTS routine");
         onCreate(d);
+    }
+
+    // ---------- рутина дня ----------
+
+    public void setRoutine(String day, int idx, boolean done) {
+        ContentValues v = new ContentValues();
+        v.put("day", day);
+        v.put("idx", idx);
+        v.put("done", done ? 1 : 0);
+        getWritableDatabase().insertWithOnConflict("routine", null, v,
+                SQLiteDatabase.CONFLICT_REPLACE);
+    }
+
+    public boolean routineDone(String day, int idx) {
+        Cursor c = getReadableDatabase().rawQuery(
+                "SELECT done FROM routine WHERE day=? AND idx=?",
+                new String[]{day, String.valueOf(idx)});
+        boolean done = c.moveToFirst() && c.getInt(0) == 1;
+        c.close();
+        return done;
+    }
+
+    /** Сколько дней подряд закрыта вся рутина. Сегодня ещё может быть в процессе. */
+    public int streak(String today, int total) {
+        if (total <= 0) return 0;
+        int n = 0;
+        int start = (dayProgress(today, total) >= total) ? 0 : 1;
+        long t = System.currentTimeMillis();
+        for (int back = start; back < 400; back++) {
+            String day = new java.text.SimpleDateFormat("yyyy-MM-dd", java.util.Locale.US)
+                    .format(new java.util.Date(t - back * 86400000L));
+            if (dayProgress(day, total) >= total) {
+                n++;
+            } else {
+                break;
+            }
+        }
+        return n;
+    }
+
+    public int dayProgress(String day, int total) {
+        int done = 0;
+        for (int i = 0; i < total; i++) if (routineDone(day, i)) done++;
+        return done;
     }
 
     // ---------- план ----------
@@ -79,7 +129,7 @@ public final class Db extends SQLiteOpenHelper {
         getWritableDatabase().delete("plans", "_id=?", new String[]{String.valueOf(id)});
     }
 
-    // ---------- аналитика ----------
+    // ---------- аналитика роликов ----------
 
     public static final class Row {
         public long id;
@@ -97,7 +147,8 @@ public final class Db extends SQLiteOpenHelper {
         }
     }
 
-    public void addStat(String name, String platform, int views, int likes, int comments, int shares, String day) {
+    public void addStat(String name, String platform, int views, int likes, int comments,
+                        int shares, String day) {
         ContentValues v = new ContentValues();
         v.put("name", name);
         v.put("platform", platform);
@@ -132,5 +183,45 @@ public final class Db extends SQLiteOpenHelper {
 
     public void delStat(long id) {
         getWritableDatabase().delete("stats", "_id=?", new String[]{String.valueOf(id)});
+    }
+
+    // ---------- рост ----------
+
+    public static final class Snap {
+        public long id;
+        public String day;
+        public String platform;
+        public int subs;
+        public int views;
+    }
+
+    public void addSnap(String day, String platform, int subs, int views) {
+        ContentValues v = new ContentValues();
+        v.put("day", day);
+        v.put("platform", platform);
+        v.put("subs", subs);
+        v.put("views", views);
+        getWritableDatabase().insert("growth", null, v);
+    }
+
+    public List<Snap> snaps() {
+        List<Snap> out = new ArrayList<>();
+        Cursor c = getReadableDatabase().rawQuery(
+                "SELECT _id, day, platform, subs, views FROM growth ORDER BY _id DESC", null);
+        while (c.moveToNext()) {
+            Snap s = new Snap();
+            s.id = c.getLong(0);
+            s.day = c.getString(1);
+            s.platform = c.getString(2);
+            s.subs = c.getInt(3);
+            s.views = c.getInt(4);
+            out.add(s);
+        }
+        c.close();
+        return out;
+    }
+
+    public void delSnap(long id) {
+        getWritableDatabase().delete("growth", "_id=?", new String[]{String.valueOf(id)});
     }
 }
