@@ -166,8 +166,7 @@ class AuthRepository(
         val cfg = clients()
         val verifier = Pkce.verifier()
         val state = Pkce.state()
-        pending = PendingOAuth(provider, verifier, state)
-        when (provider) {
+        val url = when (provider) {
             AuthProvider.GOOGLE -> {
                 check(cfg.readyForGoogle) { "В настройках не указан Google Client ID" }
                 google.authorizeUrl(cfg.googleClientId, cfg.redirectUri, Pkce.challenge(verifier), state)
@@ -178,7 +177,12 @@ class AuthRepository(
             }
             AuthProvider.PASSWORD -> error("недостижимо")
         }
-    }
+        // pending — только когда ссылку удалось построить. Иначе отказ «в настройках не указан
+        // client id» оставил бы висящую попытку, и случайный (или подставной) редирект был бы
+        // принят против воли пользователя.
+        pending = PendingOAuth(provider, verifier, state)
+        url
+    }.onFailure { pending = null }
 
     fun cancelLink(reason: String = "отменено") {
         pending = null

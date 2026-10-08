@@ -253,13 +253,16 @@ class AuthRepositoryTest {
         val bad = f.repo.completeRedirectBlocking("workdayauth://oauth2callback?code=1&state=не-тот")
         assertTrue(bad.isFailure)
         assertTrue(bad.exceptionOrNull()!!.message!!.contains("state"))
-        assertNotNull(f.repo.pendingProvider) // попытка всё ещё жива до валидного ответа
+        // Чужой state — признак подставного ответа, поэтому попытка сгорает целиком:
+        // вход придётся начать заново, зато обменять чужой code на токен не выйдет.
+        assertNull(f.repo.pendingProvider)
     }
 
     @Test
     fun `отказ пользователя обрабатывается как отмена, а не как падение`() {
         val f = Fixture()
         f.clients = AuthClients(googleClientId = "cid")
+        assertTrue(f.repo.beginLink(AuthProvider.GOOGLE).isSuccess)
         val state = f.repo.pendingStateForTest()
         val denied = f.repo.completeRedirectBlocking("workdayauth://oauth2callback?error=access_denied&state=$state")
         assertTrue(denied.isFailure)

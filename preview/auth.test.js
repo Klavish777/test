@@ -39,6 +39,8 @@ test('вход не обязателен: без сессии показывае
 test('ссылка на провайдер без client id невозможна, а не «битон»', () => {
   fresh();
   for (const p of ['google', 'tiktok']) assert.match(A.beginLink(p).error, /настройках/);
+  // отказ не должен оставлять «висящую» попытку: иначе поздний редирект был бы принят
+  assert.equal(A.completeLink('любой-state', { code: 'c' }).ok, false);
 });
 
 test('запрашиваются только scope на чтение — publish/upload запрещены', () => {
