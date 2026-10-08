@@ -1,0 +1,90 @@
+name: Work Day APK
+
+# Собирает debug-APK и кладёт его в релиз workday-latest, чтобы ссылка на загрузку была постоянная:
+# https://github.com/Klavish777/test/releases/download/workday-latest/WorkDay-debug.apk
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - 'android/**'
+      - '.github/workflows/workday-apk.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    name: Тесты домена + сборка debug APK
+    runs-on: ubuntu-latest
+    timeout-minutes: 28
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Android SDK (platform 35)
+        run: |
+          yes | sdkmanager --licenses >/dev/null 2>&1 || true
+          sdkmanager --install "platform-tools" "platforms;android-35" "build-tools;35.0.0" 2>&1 | tail -3
+          echo "ANDROID_HOME=$ANDROID_HOME" >> "$GITHUB_ENV"
+          echo "ANDROID_SDK_ROOT=$ANDROID_HOME" >> "$GITHUB_ENV"
+
+      - name: Gradle 8.11.1 + кэш зависимостей
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.11.1'
+
+      - name: Юнит-тесты домена
+        working-directory: android
+        run: gradle :app:testDebugUnitTest --no-daemon --stacktrace
+
+      - name: Сборка APK
+        id: apk
+        working-directory: android
+        run: |
+          set -o pipefail
+          gradle :app:assembleDebug --no-daemon --stacktrace 2>&1 | tee /tmp/build.log
+
+      - name: Лог сборки при падении
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: workday-build-log
+          path: /tmp/build.log
+          if-no-files-found: ignore
+
+      - name: Проверить APK
+        if: steps.apk.outcome == 'success'
+        run: |
+          APK=android/app/build/outputs/apk/debug/app-debug.apk
+          ls -l "$APK"
+          "$ANDROID_HOME"/build-tools/35.0.0/aapt2 dump badging "$APK" | head -8
+          cp "$APK" WorkDay-debug.apk
+
+      - name: Выложить артефактом
+        if: steps.apk.outcome == 'success'
+        uses: actions/upload-artifact@v4
+        with:
+          name: WorkDay-debug-apk
+          path: WorkDay-debug.apk
+          retention-days: 30
+
+      - name: Опубликовать в релизе workday-latest
+        if: steps.apk.outcome == 'success'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          if ! gh release view workday-latest >/dev/null 2>&1; then
+            gh release create workday-latest --target "${{ github.sha }}" \
+              --title "Work Day — APK (свежая сборка)" \
+              --notes "Debug-сборка ветки \`${{ github.ref_name }}\`, пересобирается CI автоматически.
+          Android 8.0 (API 26) и выше. Смена из четырёх AI-агентов: прирост, привлечение, ускорение роста и активность для YouTube и TikTok.
+          Ключ модели — свой, хранится на устройстве. Накрутки просмотров/подписчиков и автопостинга нет и не будет."
+          fi
+          gh release upload workday-latest WorkDay-debug.apk --clobber
+          echo "### Ссылка: https://github.com/${{ github.repository }}/releases/download/workday-latest/WorkDay-debug.apk" >> "$GITHUB_STEP_SUMMARY"
