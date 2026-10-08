@@ -72,9 +72,11 @@ jobs:
       - name: Проверить APK
         if: steps.apk.outcome == 'success'
         run: |
+          set -o pipefail
           APK=android/app/build/outputs/apk/debug/app-debug.apk
           ls -l "$APK"
-          "$ANDROID_HOME"/build-tools/35.0.0/aapt2 dump badging "$APK" | head -8
+          "$ANDROID_HOME"/build-tools/35.0.0/aapt2 dump badging "$APK" > /tmp/badging.txt
+          grep -E "^package:|^sdkVersion|^application-label:|^launchable-activity" /tmp/badging.txt
           cp "$APK" WorkDay-debug.apk
 
       - name: Выложить артефактом
@@ -98,4 +100,30 @@ jobs:
           Ключ модели — свой, хранится на устройстве. Накрутки просмотров/подписчиков и автопостинга нет и не будет."
           fi
           gh release upload workday-latest WorkDay-debug.apk --clobber
-          echo "### Ссылка: https://github.com/${{ github.repository }}/releases/download/workday-latest/WorkDay-debug.apk" >> "$GITHUB_STEP_SUMMARY"
+
+          PKG=$(grep -oE "name='[^']+'" /tmp/badging.txt | head -1 | tr -d "\047" | cut -d' ' -f2)
+          SDK=$(grep -oE "^sdkVersion:'[^']+'" /tmp/badging.txt | tr -d "\047" | awk '{print $2}')
+          LABEL=$(grep -oE "^application-label:'[^']+'" /tmp/badging.txt | tr -d "\047" | awk '{print $2}')
+          DEX=$(unzip -l WorkDay-debug.apk | grep -c "\.dex")
+          SIZE=$(stat -c%s WorkDay-debug.apk)
+          {
+            echo "Debug-сборка ветки \`${{ github.ref_name }}\` — пересобирается CI при каждом пуше в \`android/\`."
+            echo
+            echo "| Проверено | Значение |"
+            echo "|---|---|"
+            echo "| Пакет | \`$PKG\` |"
+            echo "| Android | $LABEL, min SDK $SDK (Android 8.0+) |"
+            echo "| dex-файлов | $DEX |"
+            echo "| размер | $SIZE байт |"
+            echo "| Юнит-тесты домена | пройдены (\`:app:testDebugUnitTest\`) |"
+            echo
+            echo "### Что это"
+            echo "Смена из четырёх AI-агентов для роста на YouTube и TikTok: прирост, привлечение, ускорение и активность."
+            echo
+            echo "### После установки"
+            echo "* Ключ модели не нужен для первого запуска: агенты работают на офлайн-движке. Свой OpenAI-совместимый ключ вводится в «Настройках» и хранится только на устройстве."
+            echo "* Сборка подписана debug-ключом: при переустановке поверх новой версии иногда требуется удалить приложение."
+            echo "* Накрутки просмотров/подписчиков и автопостинга нет и не будет — публикацию всегда подтверждаешь ты."
+          } > /tmp/notes.md
+          gh release edit workday-latest --notes-file /tmp/notes.md
+          echo "Ссылка: https://github.com/${{ github.repository }}/releases/download/workday-latest/WorkDay-debug.apk" >> "$GITHUB_STEP_SUMMARY"

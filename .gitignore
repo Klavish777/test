@@ -13,3 +13,6 @@ captures/
 .DS_Store
 # Node
 node_modules/
+
+# Лог последней CI-сборки (пишет только CI при падении, в дерево не попадает)
+ci-build.log
