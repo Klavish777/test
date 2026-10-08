@@ -160,7 +160,14 @@ class TokenResponseTest {
 class AuthRepositoryTest {
 
     private val json = Json { ignoreUnknownKeys = true; encodeDefaults = true }
-    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
+
+    private companion object {
+        /**
+         * Общий scope: вложенный (не inner) класс не видит члены экземпляра тест-класса,
+         * поэтому хранилища тестов живут на companion-уровне.
+         */
+        val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
+    }
 
     private class Fixture(vault: TokenVault = TokenVault.InMemory()) {
         val file: File = File.createTempFile("workday-session", ".json").apply { delete() }

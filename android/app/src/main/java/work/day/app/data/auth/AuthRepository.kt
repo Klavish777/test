@@ -48,7 +48,7 @@ class AuthRepository(
 
     /** Выход: сначала отзыв на стороне Google (best effort), потом локальная зачистка. */
     suspend fun signOut() {
-        secure.get(SecureStore.Keys.access(AuthProvider.GOOGLE))?.let { google.revoke(it) }
+        secure.get(SecureStore.Keys.access(AuthProvider.GOOGLE.name))?.let { google.revoke(it) }
         secure.clear()
         store.replace(Session())
         _state.value = store.value

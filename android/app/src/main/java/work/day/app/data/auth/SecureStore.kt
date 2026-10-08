@@ -68,7 +68,11 @@ class SecureStore(context: Context, private val scope: CoroutineScope) : TokenVa
     override fun clear() = write { it.clear() }
 
     private inline fun write(crossinline block: (SharedPreferences.Editor) -> Unit) {
-        scope.launch(Dispatchers.IO) { block(prefs.edit()).apply() }
+        scope.launch(Dispatchers.IO) {
+            val editor = prefs.edit()
+            block(editor)
+            editor.apply()
+        }
     }
 
     object Keys {

@@ -39,14 +39,15 @@ class YouTubeDataApi(private val json: Json = Json { ignoreUnknownKeys = true })
     ): Result<YouTubeChannelStats> =
         withContext(Dispatchers.IO) {
             runCatching {
-                require(accessToken.isNotBlank() || apiKey.isNotBlank()) { "Нужен вход через Google или ключ YouTube Data API" }
-                val mine = accessToken.isNotBlank() && channelId.isBlank()
+                val token = accessToken?.trim()?.takeIf { it.isNotEmpty() }
+                require(token != null || apiKey.isNotBlank()) { "Нужен вход через Google или ключ YouTube Data API" }
+                val mine = token != null && channelId.isBlank()
                 require(mine || channelId.isNotBlank()) { "Нужен ID канала" }
                 val query = if (mine) "part=statistics,snippet&mine=true" else "part=statistics,snippet&id=$channelId"
-                val withKey = if (accessToken.isNullOrBlank()) "$query&key=$apiKey" else query
+                val withKey = if (token == null) "$query&key=$apiKey" else query
                 val url = "https://www.googleapis.com/youtube/v3/channels?$withKey"
                 val request = Request.Builder().url(url).apply {
-                    if (!accessToken.isNullOrBlank()) header("Authorization", "Bearer $accessToken")
+                    if (token != null) header("Authorization", "Bearer $token")
                 }.build()
                 val response = http.newCall(request).execute()
                 val text = response.use { it.body?.string().orEmpty() }

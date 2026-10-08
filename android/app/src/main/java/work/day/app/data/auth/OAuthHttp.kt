@@ -80,7 +80,8 @@ object OAuthHttp {
     private suspend fun enqueue(call: Call): String = suspendCancellableCoroutine { cont ->
         cont.invokeOnCancellation { call.cancel() }
         call.enqueue(object : Callback {
-            override fun onFailure(call: Call, e: IOException) = cont.resumeWithException(AuthHttpException(e.message, e))
+            override fun onFailure(call: Call, e: IOException) =
+                cont.resumeWithException(AuthHttpException(e.message ?: "нет связи с провайдером", e))
             override fun onResponse(call: Call, response: Response) =
                 cont.resume(response.use { it.body?.string().orEmpty() })
         })
