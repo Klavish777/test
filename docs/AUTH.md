@@ -49,16 +49,16 @@ AuthScreen ──beginLink(provider)──► PendingOAuth { verifier, state, ex
 2. **APIs & Services → Library** → включить **YouTube Data API v3** (и, если нужны
    источники трафика/удержание, **YouTube Analytics API**).
 3. **OAuth consent screen**: External, название, support e-mail. На этапе тестирования
-   добавьте свой Google-аккаунт в **Test users** — иначе получите `access_denied` /
+   добавь свой Google-аккаунт в **Test users** — иначе получите `access_denied` /
    «приложение не проверено».
 4. **Credentials → Create credentials → OAuth client ID → тип Android**. Да, именно
    Android: у такого клиента нет секрета, и это правильно — в APK секрет не прячут.
    - Package name: `work.day.app.debug` для отладочной сборки (и `work.day.app` для релизной).
-   - SHA-1: `tools/assetlinks.sh` напечата both отпечатки вашего ключа сборки.
+   - SHA-1: напечатает `tools/assetlinks.sh` (он же отдаёт SHA-256 для assetlinks.json).
    - Скопируйте **Client ID** (`…apps.googleusercontent.com`) — он вставляется в приложение.
 5. **APIs & Services → Credentials → Create credentials → API key** — для публичных
    запросов YouTube Data API без токена (в приложении это поле «YouTube API key»).
-   Ограничьте ключ по `YouTube Data API v3`.
+   Ограничь ключ по `YouTube Data API v3`.
 
 ### Про Redirect URI — важно
 
@@ -69,19 +69,25 @@ Google больше не принимает на Android кастомные сх
 1. **Settings → Pages → Source: Deploy from a branch → `main` + `/docs`**. Save.
    Страница `docs/auth-callback/index.html` станет доступна как
    `https://<user>.github.io/auth-callback/`.
-2. Заполните отпечаток в `docs/.well-known/assetlinks.json`:
+2. Заполни отпечаток в `docs/.well-known/assetlinks.json`:
    `tools/assetlinks.sh` печатает готовый `python3 -` сниппет, который подставляет
    `certificate_sha256`. Проверка: `curl -s https://<user>.github.io/.well-known/assetlinks.json`.
-3. В `android/gradle.properties` задайте `workday.authCallbackHost` /
+3. В `android/gradle.properties` задай `workday.authCallbackHost` /
    `workday.authCallbackPath`, если домен не `klavish777.github.io` / `/auth-callback/`.
    Они подставляются в `intent-filter android:autoVerify="true"` манифеста — без совпадения
    хоста Android не отдаст приложению ссылку и вы останетесь на белой вкладке браузера.
-4. В настройках приложения в поле **Redirect URI** укажите
+4. В настройках приложения в поле **Redirect URI** укажи
    `https://<user>.github.io/auth-callback/` — та же строка должна быть в консоли Google
    (у Android-клиента Google редирект выводится из пакета, но сверяет он его строка в строку).
 
+Отпечатки ключа, которым CI подписывает выкладываемый APK, печатаются в релиз-ноутах
+(`workday-latest`) — ключ лежит в кэше `workday-debug-keystore-v1` и от сборки к сборке не
+меняется. Своя локальная сборка подписывается твоим `~/.android/debug.keystore`, это другой
+ключ: для него отпечатает `tools/assetlinks.sh` и в консоли держи два клиента (или два SHA-1
+у одного).
+
 Если Pages лень: локально всё работает и через `workdayauth://` (activity слушает обе
-схемы), просто на шаге 4 оставьте значение по умолчанию — удобно для отладки на своём
+схемы), просто оставь значение по умолчанию на шаге 4 — удобно для отладки на своём
 устройстве, бесполезно для чужого.
 
 ## 2. TikTok
@@ -95,7 +101,7 @@ Google больше не принимает на Android кастомные сх
 4. **Redirect URI for authorization**: `https://<user>.github.io/auth-callback/`
    (TikTok требует `https`, статический, без параметров — хвостовой `/` решает всё,
    сравнивается байт в байт).
-5. Из **Credentials** берёте `Client key` и `Client secret` — в приложение.
+5. Из **Credentials** берёшь `Client key` и `Client secret` — в приложение.
 
 ⚠️ Компромисс, о котором стоит знать: TikTok обменивает код на токен только с
 `client_secret`, а своего сервера у приложения нет. Значит секрет лежит в настройках на
@@ -123,7 +129,7 @@ Google больше не принимает на Android кастомные сх
 к файлам устройства снимает и этот замок — он против «покрутить в руках», не против
 спецслужбы. Токены провайдеров при этом в Keystore и без пароля не читаются.
 
-**Firebase-режим.** Введите Web API-ключ проекта Firebase и включите
+**Firebase-режим.** Введи Web API-ключ проекта Firebase и включите
 **Authentication → Sign-in method → Email/Password**. Тогда:
 
 - регистрация/вход/обновление токена идут через `identitytoolkit.googleapis.com`

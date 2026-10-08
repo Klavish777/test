@@ -34,6 +34,27 @@ jobs:
           echo "ANDROID_HOME=$ANDROID_HOME" >> "$GITHUB_ENV"
           echo "ANDROID_SDK_ROOT=$ANDROID_HOME" >> "$GITHUB_ENV"
 
+      # Ключ подписи должен быть одним и тем же от сборки к сборке: на его SHA-1
+      # настраивается OAuth-клиент Google, и «уплывший» отпечаток ломал бы вход
+      # (redirect_uri_mismatch / invalid_client). Кладём его в кэш раннера.
+      - name: Debug-ключ подписи (постоянный между прогонами)
+        uses: actions/cache@v4
+        with:
+          path: ~/.android/debug.keystore
+          key: workday-debug-keystore-v1
+
+      - name: Создать debug-ключ, если кэша ещё нет
+        run: |
+          set -o pipefail
+          KS="$HOME/.android/debug.keystore"
+          mkdir -p "$HOME/.android"
+          if [ ! -f "$KS" ]; then
+            keytool -genkeypair -v -keystore "$KS" -alias androiddebugkey \
+              -storepass android -keypass android -keyalg RSA -keysize 2048 \
+              -dname "CN=Android Debug,O=Android,C=US" -validity 10000 2>&1 | tail -2
+          fi
+          ls -l "$KS"
+
       - name: Gradle 8.11.1 + кэш зависимостей
         uses: gradle/actions/setup-gradle@v4
         with:
@@ -97,6 +118,7 @@ jobs:
           cp "$APK" WorkDay-debug.apk
 
       # Значения нужны, чтобы прописать вход в Google Cloud Console и assetlinks.json (docs/AUTH.md).
+      # Ключ берётся из кэша выше, поэтому отпечаток совпадает от сборки к сборке.
       - name: Отпечатки ключа сборки
         if: steps.apk.outcome == 'success'
         run: |
@@ -177,10 +199,11 @@ jobs:
               echo "SHA-256:      $SHA256   # для .well-known/assetlinks.json"
               echo "\`\`\`"
               echo
-              echo "Внимание: CI подписывает debug-ключом, который живёт только во время раннера — "
-              echo "на следующем прогоне отпечаток будет другой, и Google начнёт отвечать \`redirect_uri_mismatch\`. "
-              echo "Для постоянной привязки собери APK локально (\`docs/BUILD.md\`): там ключ стабильный, "
-              echo "а напечатай его через \`tools/assetlinks.sh\`. Пошаговая настройка — \`docs/AUTH.md\`."
+              echo "Ключ лежит в кэше CI (\`workday-debug-keystore-v1\`) и не меняется от сборки к сборке — "
+              echo "эти значения можно один раз вписать в консоль и забыть. Если кэш всё же сброшен, "
+              echo "отпечаток сменится и Google ответит \`redirect_uri_mismatch\`: обнови SHA-1 в консоли. "
+              echo "Локальную сборку подписывает твой собственный ключ в ~/.android — его напечатает tools/assetlinks.sh."
+              echo "Пошаговая настройка входа — docs/AUTH.md."
             fi
           } > /tmp/notes.md
           gh release edit workday-latest --notes-file /tmp/notes.md
