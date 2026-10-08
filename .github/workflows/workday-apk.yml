@@ -104,8 +104,8 @@ jobs:
           B=/tmp/badging.txt
           PKG=$(sed -nE "s/^package: name='([^']+)'.*/\1/p" $B | head -1)
           VER=$(sed -nE "s/.*versionName='([^']+)'.*/\1/p" $B | head -1)
-          SDK=$(sed -nE "s/^sdkVersion:'([0-9]+)'.*/\1/p" $B | head -1)
-          TGT=$(sed -nE "s/^targetSdkVersion:'([0-9]+)'.*/\1/p" $B | head -1)
+          SDK=$(grep -oE "(minSdkVersion|sdkVersion):'[0-9]+'" $B | head -1 | grep -oE "[0-9]+")
+          TGT=$(grep -oE "targetSdkVersion:'[0-9]+'" $B | head -1 | grep -oE "[0-9]+")
           LABEL=$(sed -nE "s/^application-label:'(.*)'.*/\1/p" $B | head -1)
           LAUNCH=$(sed -nE "s/^launchable-activity: name='([^']+)'.*/\1/p" $B | head -1)
           DEX=$(unzip -l WorkDay-debug.apk | grep -c '\.dex')
@@ -117,7 +117,7 @@ jobs:
             echo "|---|---|"
             echo "| Пакет / запуск | \`$PKG\` → \`$LAUNCH\` |"
             echo "| Название / версия | $LABEL $VER |"
-            echo "| Android | min SDK $SDK, target $TGT |"
+            echo "| Android | min SDK $SDK (Android 8.0+), target $TGT |"
             echo "| dex-файлов | $DEX |"
             echo "| размер | $SIZE байт |"
             echo "| Юнит-тесты домена | пройдены (\`:app:testDebugUnitTest\`) |"
