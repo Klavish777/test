@@ -3,11 +3,11 @@ plugins {
 }
 
 android {
-    namespace 'com.example.farmmonitor'
+    namespace 'com.example.creatorkit'
     compileSdk 34
 
     defaultConfig {
-        applicationId "com.example.farmmonitor"
+        applicationId "com.example.creatorkit"
         minSdk 26
         targetSdk 34
         versionCode 1
@@ -24,8 +24,6 @@ android {
         sourceCompatibility JavaVersion.VERSION_17
         targetCompatibility JavaVersion.VERSION_17
     }
-
-    // Никаких внешних зависимостей: только то, что есть в самом Android.
 }
 
 dependencies {
