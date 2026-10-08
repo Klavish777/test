@@ -7,6 +7,9 @@ on:
       - 'android/**'
       - '.github/workflows/android-apk.yml'
 
+permissions:
+  contents: write
+
 jobs:
   build:
     name: Сборка debug APK
@@ -24,8 +27,6 @@ jobs:
         run: |
           echo "JAVA_HOME=$JAVA_HOME"
           echo "ANDROID_HOME=$ANDROID_HOME"
-          ls "$ANDROID_HOME" || true
-          which sdkmanager || true
           yes | sdkmanager --licenses >/dev/null 2>&1 || true
           sdkmanager --install "platforms;android-34" "build-tools;34.0.0" 2>&1 | tail -5
           echo "ANDROID_HOME=$ANDROID_HOME" >> $GITHUB_ENV
@@ -39,10 +40,25 @@ jobs:
           /opt/gradle-8.7/bin/gradle --version | head -6
 
       - name: Собрать APK
+        id: build
         working-directory: android
-        run: /opt/gradle-8.7/bin/gradle :app:assembleDebug --no-daemon --stacktrace
+        run: |
+          set -o pipefail
+          /opt/gradle-8.7/bin/gradle :app:assembleDebug --no-daemon --stacktrace 2>&1 | tee build.log
+
+      - name: Сохранить лог сборки
+        if: failure()
+        working-directory: android
+        run: |
+          tail -c 6000 build.log > ../ci-build.log
+          git config user.name "ci-bot"
+          git config user.email "ci-bot@users.noreply.github.com"
+          git add -f ../ci-build.log
+          git commit -m "ci: лог сборки [skip ci]" || echo "нечего коммитить"
+          git push origin HEAD:arena/0a0b42d6-test || echo "пуш не удался"
 
       - name: Выложить APK
+        if: steps.build.outcome == 'success'
         uses: actions/upload-artifact@v4
         with:
           name: farm-monitor-debug-apk
