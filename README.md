@@ -54,6 +54,34 @@ Work Day **не накручивает** аудиторию и не публик
   TikTok Studio (`data/platform/AnalyticsImporter.kt`). Пока импорт не сделан, график живёт на
   детерминированных демо-данных и честно это подписывает.
 
+## Вход: Google, TikTok, логин и пароль
+
+Работать можно и без входа (кнопка «Без входа») — тогда агенты идут на демо-данные и честно
+это подписывают. Вход нужен только для одного: чтобы цифры приходили из **твоего** канала.
+
+| Способ | Что получает приложение | Права, которые оно просит |
+|---|---|---|
+| Google (OAuth + PKCE, без секрета) | id канала, название, подписчики, просмотры, удержание | `youtube.readonly`, `yt-analytics.readonly` |
+| TikTok (Login Kit v2, без SDK) | `open_id`, ник, подписчики, список роликов | `user.info.basic`, `video.list` (+ `user.info.stats` по одобрению) |
+| Логин и пароль | аккаунт Firebase — или локальный замок устройства | — |
+
+* **Scope на чтение, и точка.** Ни `youtube.upload`, ни `video.publish`, ни управление
+  комментариями не запрашиваются: и в коде это константы, и тест падает, если туда
+  попадёт слово `publish`. Публикация остаётся ручной (очередь материалов + «выложить»).
+* **Токены** — в `EncryptedSharedPreferences` с ключом в Android Keystore; если Keystore
+  недоступен, хранилище деградирует и **говорит об этом** в настройках. В `Session`-JSON,
+  который приложение читает и пишет часто, не попадает ни токен, ни пароль, ни хеш.
+* **Логин/пароль без нашего сервера** — их и нет. С Firebase-ключом это настоящий облачный
+  аккаунт (сброс почты, подтверждение email); без ключа приложение ставит PBKDF2-хеш
+  (210 000 итераций, случайная соль) и превращается в замок на устройство: перенести
+  такой аккаунт нельзя, восстановить пароль нельзя, прочитать токены без разблокировки нельзя.
+* **Замок на приложении** проверяет пароль локально — вход в свои заметки не должен зависеть
+  от того, есть ли сеть в метро.
+
+Настройка консолей (Google Cloud, TikTok for Developers, Firebase), страница-перехват на
+GitHub Pages для `redirect_uri` и разбор типовых ошибок — `docs/AUTH.md`; отпечатки подписи
+для консоли печатает `tools/assetlinks.sh` (и они же попадают в релиз-ноуты CI).
+
 ## Сборка в один клик
 
 `.github/workflows/workday-apk.yml` на GitHub Actions: JDK 17 → Android SDK 35 → Gradle 8.11.1 →
@@ -77,22 +105,33 @@ android/                          Android-приложение (Kotlin 2.0.21, J
     data/llm/                      LlmClient, OpenAiCompatLlm, OfflineLlm
     data/repo/                     SettingsRepository (DataStore), WorkspaceRepository, SampleMetrics
     data/platform/                 YouTubeDataApi (чтение), AnalyticsImporter (CSV)
-    ui/                            WorkDayRoot + WorkDayViewModel и 5 вкладок:
-                                   Смена · Агенты · Задачи · Рост · Настройки
-  app/src/test/…/DomainTest.kt     юнит-тесты домена и парсера (./gradlew :app:testDebugUnitTest)
+    data/auth/                     вход целиком: PasswordHasher (PBKDF2), Pkce, Urls, TokenResponse,
+                                   SecureStore (Keystore), GoogleOAuth, TikTokOAuth, FirebaseAuthRest,
+                                   OAuthHttp, AuthRepository (оркестратор: pending-состояние, state, refresh)
+    OAuthRedirectActivity.kt       точка возврата из браузера (workdayauth:// и https App Link)
+    ui/                            WorkDayRoot + WorkDayViewModel и 6 вкладок:
+                                   Смена · Агенты · Задачи · Рост · Аккаунт · Настройки
+    ui/auth/                       AuthScreen (провайдеры + вход/регистрация), LockScreen (замок)
+  app/src/test/…/DomainTest.kt     юнит-тесты домена и парсера
+  app/src/test/…/AuthTest.kt       хеш, PKCE, разбор редиректа, реестр аккаунта, «пароля нет в JSON»
+                                   (./gradlew :app:testDebugUnitTest)
 
 preview/                          кликабельный прототип интерфейса (тот же движок, чистый JS)
-  index.html app.js engine.test.js package.json
+  index.html app.js engine.test.js auth.test.js package.json
 docs/ARCHITECTURE.md              слои, поток данных, почему так, а не иначе
 docs/AGENTS.md                    спецификация 4 агентов, плейбуков и риск-модели
 docs/BUILD.md                     как собрать APK и что понадобится
+docs/AUTH.md                      настройка Google / TikTok / Firebase, redirect, типовые ошибки
+docs/auth-callback/index.html     страница-перехват для OAuth (класть на GitHub Pages)
+docs/.well-known/assetlinks.json  подтверждение App Link для той же страницы
+tools/assetlinks.sh               SHA-1 для консоли Google + SHA-256 для assetlinks.json
 ```
 
 ## Запуск
 
 ```bash
 # прототип интерфейса + тесты движка (Node 18+, сервер не нужен — можно открыть файл)
-cd preview && node --test engine.test.js        # 9 тестов: модель, план смены, риск-модель, экраны
+cd preview && npm test                          # 18 тестов: модель, смена, риск-модель, экраны, вход
 python3 -m http.server 8137 --bind 0.0.0.0      # и открыть http://localhost:8137
 
 # Android-приложение — открыть android/ в Android Studio, Gradle Sync, Run.

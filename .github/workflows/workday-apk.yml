@@ -79,6 +79,25 @@ jobs:
           grep -E "^package:|^sdkVersion|^application-label:|^launchable-activity" /tmp/badging.txt
           cp "$APK" WorkDay-debug.apk
 
+      # Значения нужны, чтобы прописать вход в Google Cloud Console и assetlinks.json (docs/AUTH.md).
+      - name: Отпечатки ключа сборки
+        if: steps.apk.outcome == 'success'
+        run: |
+          KS="$HOME/.android/debug.keystore"
+          PKG=$(sed -nE "s/^package: name='([^']+)'.*/\1/p" /tmp/badging.txt | head -1)
+          SHA1=""
+          SHA256=""
+          if [ -f "$KS" ]; then
+            SHA1=$(keytool -list -v -keystore "$KS" -alias androiddebugkey -storepass android 2>/dev/null \
+              | awk -F': ' '/SHA1:/{gsub(/ /,"",$2); print $2}' | head -1)
+            SHA256=$(keytool -exportcert -keystore "$KS" -alias androiddebugkey -storepass android 2>/dev/null \
+              | openssl dgst -sha256 -binary | openssl enc -base64 | tr '+/' '-_' | tr -d '=')
+          fi
+          { echo "PKG=$PKG"; echo "SHA1=$SHA1"; echo "SHA256=$SHA256"; } > /tmp/fp.env
+          echo "package: $PKG" >> "$GITHUB_STEP_SUMMARY"
+          echo "SHA-1: ${SHA1:-ключ не найден}" >> "$GITHUB_STEP_SUMMARY"
+          echo "SHA-256 (base64url): ${SHA256:-—}" >> "$GITHUB_STEP_SUMMARY"
+
       - name: Выложить артефактом
         if: steps.apk.outcome == 'success'
         uses: actions/upload-artifact@v4
@@ -110,6 +129,7 @@ jobs:
           LAUNCH=$(sed -nE "s/^launchable-activity: name='([^']+)'.*/\1/p" $B | head -1)
           DEX=$(unzip -l WorkDay-debug.apk | grep -c '\.dex')
           SIZE=$(stat -c%s WorkDay-debug.apk)
+          [ -f /tmp/fp.env ] && . /tmp/fp.env || true
           {
             echo "Debug-сборка ветки \`${{ github.ref_name }}\` — пересобирается CI при каждом пуше в \`android/\`."
             echo
@@ -129,6 +149,22 @@ jobs:
             echo "* Ключ модели не нужен для первого запуска: агенты работают на офлайн-движке. Свой OpenAI-совместимый ключ вводится в «Настройках» и хранится только на устройстве."
             echo "* Сборка подписана debug-ключом: при переустановке поверх новой версии иногда требуется удалить приложение."
             echo "* Накрутки просмотров/подписчиков и автопостинга нет и не будет — публикацию всегда подтверждаешь ты."
+            if [ -n "${SHA1:-}" ]; then
+              echo
+              echo "### Если настраиваешь вход через Google"
+              echo "OAuth-клиенту типа **Android** нужны пакет и отпечаток подписи этой сборки:"
+              echo
+              echo "\`\`\`"
+              echo "package name: $PKG"
+              echo "SHA-1:        $SHA1"
+              echo "SHA-256:      $SHA256   # для .well-known/assetlinks.json"
+              echo "\`\`\`"
+              echo
+              echo "Внимание: CI подписывает debug-ключом, который живёт только во время раннера — "
+              echo "на следующем прогоне отпечаток будет другой, и Google начнёт отвечать \`redirect_uri_mismatch\`. "
+              echo "Для постоянной привязки собери APK локально (\`docs/BUILD.md\`): там ключ стабильный, "
+              echo "а напечатай его через \`tools/assetlinks.sh\`. Пошаговая настройка — \`docs/AUTH.md\`."
+            fi
           } > /tmp/notes.md
           gh release edit workday-latest --notes-file /tmp/notes.md
           echo "Ссылка: https://github.com/${{ github.repository }}/releases/download/workday-latest/WorkDay-debug.apk" >> "$GITHUB_STEP_SUMMARY"

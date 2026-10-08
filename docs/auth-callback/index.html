@@ -1,0 +1,61 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Work Day · возврат авторизации</title>
+<!--
+  Страница-перехват для OAuth. Провайдер (Google / TikTok) умеет возвращать code только
+  на https-адрес, поэтому этот файл лежит на GitHub Pages и просто передаёт параметры
+  приложению через внутреннюю схему workdayauth://. Никакого кода на сервере не нужно.
+-->
+<style>
+  body{margin:0;background:#0b0d13;color:#e7ebf3;font:15px/1.5 system-ui,-apple-system,Segoe UI,Roboto,sans-serif;display:grid;place-items:center;min-height:100vh;padding:24px}
+  .c{max-width:34em}
+  h1{font-size:19px;margin:0 0 6px}
+  p{color:#98a2b8;margin:0 0 14px}
+  a{color:#7c8cff}
+  code{background:#151a26;padding:2px 6px;border-radius:6px;font-size:13px}
+  .ok{color:#5ee0a0}.bad{color:#ff7a90}
+</style>
+</head>
+<body>
+<div class="c">
+  <h1 id="t">Возвращаем вас в Work Day…</h1>
+  <p id="m">Если приложение не открылось само — нажмите на ссылку ниже. Ничего не потеряется: код авторизации остаётся в адресе этой страницы.</p>
+  <p><a id="l" href="#">Открыть Work Day</a></p>
+  <p id="e" class="bad" hidden></p>
+</div>
+<script>
+(function () {
+  var APP = 'workdayauth://oauth2callback';
+  var q = new URLSearchParams(location.search);
+  var keep = new URLSearchParams();
+  ['code', 'state', 'error', 'error_description', 'scopes'].forEach(function (k) {
+    var v = q.get(k);
+    if (v !== null) keep.set(k, v);
+  });
+  var url = APP + (keep.toString() ? '?' + keep.toString() : '');
+  var link = document.getElementById('l');
+  link.href = url;
+  if (!keep.has('code') && !keep.has('error')) {
+    document.getElementById('t').textContent = 'Пустой возврат';
+    document.getElementById('e').hidden = false;
+    document.getElementById('e').textContent =
+      'В адресе нет ни code, ни error. Значит, провайдер сюда не редиректил: проверьте, что Redirect URI в консоли провайдера, в настройках Work Day и здесь совпадают символ в символ.';
+    return;
+  }
+  if (keep.has('error')) {
+    document.getElementById('t').textContent = 'Авторизация отменена';
+    document.getElementById('m').textContent = 'Приложение можно закрыть — вход не выполнен.';
+    document.getElementById('e').hidden = false;
+    document.getElementById('e').textContent = keep.get('error') + (keep.get('error_description') ? ' · ' + keep.get('error_description') : '');
+    return;
+  }
+  document.getElementById('t').innerHTML = '<span class="ok">Готово.</span> Открываем Work Day';
+  location.replace(url);
+  setTimeout(function () { document.body.style.visibility = 'visible'; }, 400);
+})();
+</script>
+</body>
+</html>

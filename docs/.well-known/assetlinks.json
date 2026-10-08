@@ -1,0 +1,18 @@
+[
+  {
+    "relation": ["delegate_permission/common.handle_all_urls"],
+    "target": {
+      "namespace": "android_app",
+      "package_name": "work.day.app.debug",
+      "certificate_sha256": ["ЗАМЕНИ-НА-BASE64URL-SHA256-СЕРТИФИКАТА-СБОРКИ"]
+    }
+  },
+  {
+    "relation": ["delegate_permission/common.handle_all_urls"],
+    "target": {
+      "namespace": "android_app",
+      "package_name": "work.day.app",
+      "certificate_sha256": ["ЗАМЕНИ-НА-BASE64URL-SHA256-РЕЛИЗНОГО-КЛЮЧА"]
+    }
+  }
+]

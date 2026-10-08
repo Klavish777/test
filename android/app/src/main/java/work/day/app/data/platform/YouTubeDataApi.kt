@@ -32,14 +32,23 @@ class YouTubeDataApi(private val json: Json = Json { ignoreUnknownKeys = true })
         .readTimeout(25, TimeUnit.SECONDS)
         .build()
 
-    suspend fun fetchChannelStats(apiKey: String, channelId: String): Result<YouTubeChannelStats> =
+    suspend fun fetchChannelStats(
+        apiKey: String,
+        channelId: String,
+        accessToken: String? = null,
+    ): Result<YouTubeChannelStats> =
         withContext(Dispatchers.IO) {
             runCatching {
-                require(apiKey.isNotBlank()) { "Нужен ключ YouTube Data API (только для чтения)" }
-                require(channelId.isNotBlank()) { "Нужен ID канала" }
-                val url = "https://www.googleapis.com/youtube/v3/channels" +
-                    "?part=statistics,snippet&id=$channelId&key=$apiKey"
-                val response = http.newCall(Request.Builder().url(url).build()).execute()
+                require(accessToken.isNotBlank() || apiKey.isNotBlank()) { "Нужен вход через Google или ключ YouTube Data API" }
+                val mine = accessToken.isNotBlank() && channelId.isBlank()
+                require(mine || channelId.isNotBlank()) { "Нужен ID канала" }
+                val query = if (mine) "part=statistics,snippet&mine=true" else "part=statistics,snippet&id=$channelId"
+                val withKey = if (accessToken.isNullOrBlank()) "$query&key=$apiKey" else query
+                val url = "https://www.googleapis.com/youtube/v3/channels?$withKey"
+                val request = Request.Builder().url(url).apply {
+                    if (!accessToken.isNullOrBlank()) header("Authorization", "Bearer $accessToken")
+                }.build()
+                val response = http.newCall(request).execute()
                 val text = response.use { it.body?.string().orEmpty() }
                 if (!response.isSuccessful) throw Error("YouTube API ${response.code}: ${text.take(200)}")
                 parseChannel(text) ?: throw Error("Канал не найден — проверь ID")

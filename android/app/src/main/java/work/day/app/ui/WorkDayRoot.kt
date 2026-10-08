@@ -24,6 +24,8 @@ import androidx.compose.material.icons.filled.List
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Settings
 import androidx.lifecycle.ViewModelProvider
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.compose.runtime.getValue
 import androidx.lifecycle.viewmodel.compose.viewModel
 import android.content.Context
 import androidx.compose.ui.platform.LocalContext
@@ -51,9 +53,21 @@ fun WorkDayRoot() {
     )
     var selected by rememberSaveable { mutableStateOf(0) }
     val snackbar = remember { SnackbarHostState() }
+    val session by vm.session.collectAsStateWithLifecycle()
+    var unlocked by rememberSaveable { mutableStateOf(false) }
 
     androidx.compose.runtime.LaunchedEffect(Unit) {
         vm.messages.collect { snackbar.showSnackbar(it) }
+    }
+
+    // Порядок: если стоит замок — сначала он; если человек ещё не входил и не отказался — экран входа.
+    if (session.lockEnabled && !unlocked) {
+        work.day.app.ui.auth.LockScreen(vm, onUnlocked = { unlocked = true })
+        return
+    }
+    if (session.needsAuth) {
+        work.day.app.ui.auth.AuthScreen(vm)
+        return
     }
 
     Scaffold(

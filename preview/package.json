@@ -5,7 +5,7 @@
   "description": "Кликабельный прототип интерфейса Work Day + тест движка смены",
   "type": "module",
   "scripts": {
-    "test": "node --test engine.test.js",
+    "test": "node --test engine.test.js auth.test.js",
     "serve": "python3 -m http.server 8137 --bind 0.0.0.0"
   }
 }

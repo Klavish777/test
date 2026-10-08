@@ -4,6 +4,13 @@
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
 
+    <!-- Android 11+: разрешение видно только то, что действительно вызываем — браузер для OAuth -->
+    <queries>
+        <intent>
+            <action android:name="android.support.customtabs.action.CustomTabsService" />
+        </intent>
+    </queries>
+
     <application
         android:name=".WorkDayApp"
         android:allowBackup="true"
@@ -23,6 +30,39 @@
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity>
+        <!-- OAuth redirect: Google и TikTok возвращают code на эту схему -->
+        <activity
+            android:name=".OAuthRedirectActivity"
+            android:exported="true"
+            android:excludeFromRecents="true"
+            android:launchMode="singleTask"
+            android:taskAffinity="">
+            <!-- Внутренний возврат: страница-перехват докидывает code сюда. -->
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data
+                    android:scheme="workdayauth"
+                    android:host="oauth2callback" />
+            </intent-filter>
+            <!--
+                App Link: провайдеры (Google с 2025 года точно) не принимают на Android
+                кастомные схемы, поэтому редирект registrируется https-страницей,
+                а это то же самое приложение слушает её напрямую. Хост и путь
+                подставляются из gradle.properties (workday.authCallbackHost/Path).
+                Файл .well-known/assetlinks.json лежит в docs/ — см. docs/AUTH.md.
+            -->
+            <intent-filter android:autoVerify="true">
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data
+                    android:scheme="https"
+                    android:host="${authCallbackHost}"
+                    android:pathPrefix="${authCallbackPath}" />
             </intent-filter>
         </activity>
     </application>

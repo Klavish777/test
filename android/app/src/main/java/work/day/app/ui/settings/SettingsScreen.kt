@@ -139,6 +139,152 @@ fun SettingsScreen(vm: WorkDayViewModel, modifier: Modifier = Modifier) {
             }
         }
 
+        // ── аккаунт и доступы ─────────────────────────────────────────────────
+        item {
+            Panel {
+                val session by vm.session.collectAsStateWithLifecycle()
+                val clients by vm.authClients.collectAsStateWithLifecycle()
+                var googleId by remember { mutableStateOf(clients.googleClientId) }
+                var tiktokKey by remember { mutableStateOf(clients.tiktokClientKey) }
+                var tiktokSecret by remember { mutableStateOf(clients.tiktokClientSecret) }
+                var firebaseKey by remember { mutableStateOf(clients.firebaseApiKey) }
+                var redirect by remember { mutableStateOf(clients.redirectUri) }
+                var tiktokStats by remember { mutableStateOf(clients.tiktokWithStats) }
+                var lockOn by remember { mutableStateOf(session.lockEnabled) }
+                var lockPassword by remember { mutableStateOf("") }
+
+                Text("Аккаунт и доступы", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                Spacer(Modifier.height(4.dp))
+                Text(
+                    "Токены лежат в ${vm.tokenStorage()}. В выгрузку настроек и в логи они не попадают.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+
+                Spacer(Modifier.height(12.dp))
+                if (session.links.isEmpty()) {
+                    Text("Ни один провайдер не привязан. Агенты работают на демо-данных и офлайн-движке.",
+                        style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.outline)
+                } else {
+                    session.links.forEach { link ->
+                        Row(Modifier.fillMaxWidth().padding(vertical = 6.dp), verticalAlignment = Alignment.CenterVertically) {
+                            Column(Modifier.weight(1f)) {
+                                Text("${link.provider.label} · ${link.title}", style = MaterialTheme.typography.bodyLarge)
+                                Text(
+                                    listOfNotNull(
+                                        link.email.takeIf { it.isNotBlank() },
+                                        "scope: ${link.scopes.size}",
+                                        if (link.expiresAt > 0) {
+                                            val until = java.text.SimpleDateFormat("dd.MM HH:mm", java.util.Locale.getDefault())
+                                                .format(java.util.Date(link.expiresAt))
+                                            if (link.isExpired) "токен истёк${if (link.canRefresh) ", обновлю сам" else " — войди заново"}"
+                                            else "действует до $until"
+                                        } else null,
+                                        if (link.followers > 0) "подписчиков: ${link.followers}" else null,
+                                    ).filter { it.isNotBlank() }.joinToString(" · "),
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = if (link.needsAttention) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.outline,
+                                )
+                            }
+                            OutlinedButton(onClick = { vm.revoke(link.provider) }) { Text("Отвязать") }
+                        }
+                    }
+                }
+                Spacer(Modifier.height(10.dp))
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    OutlinedButton(onClick = { vm.link(work.day.app.domain.model.AuthProvider.GOOGLE) }, enabled = clients.readyForGoogle) { Text("Google") }
+                    OutlinedButton(onClick = { vm.link(work.day.app.domain.model.AuthProvider.TIKTOK) }, enabled = clients.readyForTikTok) { Text("TikTok") }
+                    OutlinedButton(onClick = { vm.refreshTikTokStats() }) { Text("Цифры TikTok") }
+                }
+
+                Spacer(Modifier.height(14.dp))
+                Text("Клиенты авторизации", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.primary)
+                Spacer(Modifier.height(6.dp))
+                Text(
+                    "Work Day — публичный клиент: секрета приложения у него нет и быть не может. " +
+                        "Поэтому Google настраивается клиентом «Android» (пакет + SHA-1 сборки), а TikTok — Client Key из " +
+                        "твоего приложения в TikTok for Developers с тем же redirect. Пошагово — в docs/AUTH.md.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.outline,
+                )
+                Spacer(Modifier.height(10.dp))
+                LabeledField("Google Client ID", googleId, { googleId = it.trim() }, placeholder = "xxxx.apps.googleusercontent.com")
+                Spacer(Modifier.height(10.dp))
+                LabeledField("TikTok Client Key", tiktokKey, { tiktokKey = it.trim() }, placeholder = "aw…")
+                Spacer(Modifier.height(10.dp))
+                LabeledField("TikTok Client Secret (если приложение серверного типа)", tiktokSecret, { tiktokSecret = it.trim() })
+                Spacer(Modifier.height(10.dp))
+                LabeledField("Firebase Web API Key (для переносимого логина/пароля)", firebaseKey, { firebaseKey = it.trim() }, placeholder = "AIza…")
+                Spacer(Modifier.height(10.dp))
+                LabeledField(
+                    "Redirect URI",
+                    redirect,
+                    { redirect = it.trim() },
+                    placeholder = "https://<user>.github.io/auth-callback/",
+                )
+                Text(
+                    "Google с 2025 года не принимает на Android кастомные схемы вида workdayauth:// — " +
+                        "в это поле нужен https-адрес страницы-перехвата, и та же строка должна стоять " +
+                        "в консоли провайдера. Быстрее всего поднять её на GitHub Pages из папки docs/ " +
+                        "(docs/auth-callback/index.html уже лежит в репозитории), остальное — по шагам в docs/AUTH.md. " +
+                        "Для отладки на своём устройстве можно оставить и workdayauth://oauth2callback: " +
+                        "Activity слушает обе схемы.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.outline,
+                )
+                Spacer(Modifier.height(10.dp))
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Column(Modifier.weight(1f)) {
+                        Text("Просить user.info.stats у TikTok", style = MaterialTheme.typography.bodyLarge)
+                        Text(
+                            "Только если TikTok одобрил этот scope в твоём приложении: с неодобренным " +
+                                "scope страница согласия отклоняет весь запрос целиком. Без него подписчики " +
+                                "и просмотры придут нулями — выдумывать их приложение не будет.",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
+                    Switch(checked = tiktokStats, onCheckedChange = { tiktokStats = it })
+                }
+                Spacer(Modifier.height(12.dp))
+                Button(onClick = {
+                    vm.saveAuthClients(
+                        clients.copy(
+                            googleClientId = googleId.trim(),
+                            tiktokClientKey = tiktokKey.trim(),
+                            tiktokClientSecret = tiktokSecret.trim(),
+                            firebaseApiKey = firebaseKey.trim(),
+                            tiktokWithStats = tiktokStats,
+                            redirectUri = redirect.trim().ifBlank { work.day.app.domain.model.AuthClients.DEFAULT_REDIRECT },
+                        )
+                    )
+                }) { Text("Сохранить клиенты") }
+
+                Spacer(Modifier.height(16.dp))
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Column(Modifier.weight(1f)) {
+                        Text("Замок на приложении", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                        Text(
+                            "Проверка пароля идёт локальным PBKDF2-хешем, поэтому работает без сети.",
+                            style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
+                    Switch(checked = lockOn, onCheckedChange = { lockOn = it })
+                }
+                if (lockOn != session.lockEnabled) {
+                    Spacer(Modifier.height(8.dp))
+                    LabeledField("Новый пароль замка (от 6 символов)", lockPassword, { lockPassword = it })
+                    Spacer(Modifier.height(8.dp))
+                    OutlinedButton(onClick = {
+                        vm.saveLock(lockOn, lockPassword.ifBlank { null })
+                        lockPassword = ""
+                    }) { Text(if (lockOn) "Поставить замок" else "Снять замок") }
+                }
+                Spacer(Modifier.height(10.dp))
+                OutlinedButton(onClick = { vm.signOut() }) { Text("Выйти из аккаунта и отвязать всё") }
+            }
+        }
+
         // ── распорядок ────────────────────────────────────────────────────────
         item {
             Panel {

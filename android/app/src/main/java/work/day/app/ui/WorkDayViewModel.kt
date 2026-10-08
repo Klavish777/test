@@ -3,9 +3,7 @@ package work.day.app.ui
 import android.app.Application
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
-import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.SharedFlow
-import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.launch
 import work.day.app.WorkDayApp
 import work.day.app.data.llm.OfflineLlm
@@ -32,10 +30,82 @@ class WorkDayViewModel(application: Application) : AndroidViewModel(application)
     val workspace = container.workspace.state
     val llmSettings = container.llmSettings
 
-    private val _messages = MutableSharedFlow<String>(extraBufferCapacity = 4)
-    val messages: SharedFlow<String> = _messages.asSharedFlow()
+    val session = container.session
+    val authClients = container.authClients
+
+    /** Сообщения — из контейнера: их генерируют и ViewModel, и OAuthRedirectActivity. */
+    val messages: SharedFlow<String> = container.messages
 
     // ─── смена ────────────────────────────────────────────────────────────────
+
+    // ─── вход и привязка площадок ─────────────────────────────────────────────
+
+    fun link(provider: work.day.app.domain.model.AuthProvider) {
+        viewModelScope.launch {
+            container.auth.beginLink(provider)
+                .onSuccess { url ->
+                    if (work.day.app.OAuthRedirectActivity.open(getApplication(), url)) {
+                        _status("Открываю страницу согласия ${provider.label} — вернёшься в приложение сам")
+                    } else {
+                        container.auth.cancelLink("не чем открыть страницу согласия")
+                        _status("${provider.label}: нужен браузер (Chrome/Firefox) — на устройстве не найдено приложение для ссылок")
+                    }
+                }
+                .onFailure { _status("${provider.label}: ${it.message?.take(180)}") }
+        }
+    }
+
+    fun signIn(email: String, password: String) = viewModelScope.launch {
+        container.auth.signIn(email, password)
+            .onSuccess { _status("Вход выполнен") }
+            .onFailure { _status("Вход не получился: ${it.message?.take(180)}") }
+    }
+
+    fun register(email: String, password: String, confirm: String) = viewModelScope.launch {
+        container.auth.register(email, password, confirm)
+            .onSuccess { _status(if (authClients.value.readyForFirebase) "Аккаунт создан в Firebase" else "Пароль установлен, приложение под замком") }
+            .onFailure { _status("Регистрация не удалась: ${it.message?.take(180)}") }
+    }
+
+    fun resetPassword(email: String) = viewModelScope.launch {
+        container.auth.requestPasswordReset(email)
+            .onSuccess { _status("Письмо для сброса отправлено на $email") }
+            .onFailure { _status(it.message?.take(180).orEmpty()) }
+    }
+
+    fun continueAsGuest() = container.auth.continueAsGuest()
+    fun tokenStorage(): String = container.tokenStorageLabel()
+    fun signOut() = viewModelScope.launch {
+        container.auth.signOut()
+        notify("Вышли; токены отозваны")
+    }
+    fun unlock(password: String): Boolean = container.auth.verifyLock(password)
+    fun revoke(provider: work.day.app.domain.model.AuthProvider) = viewModelScope.launch {
+        container.auth.revoke(provider)
+        _status("Отвязано: ${provider.label}")
+    }
+
+    fun saveLock(enabled: Boolean, password: String?) = viewModelScope.launch {
+        container.auth.setLock(enabled, password)
+            .onSuccess { _status(if (enabled) "Замок включён" else "Замок снят") }
+            .onFailure { _status(it.message?.take(180).orEmpty()) }
+    }
+
+    fun saveAuthClients(clients: work.day.app.domain.model.AuthClients) {
+        container.saveAuthClients(clients)
+        _status("Клиенты авторизации сохранены на устройстве")
+    }
+
+    /** TikTok-статистика, если токен жив — обновляет followers в профиле. */
+    fun refreshTikTokStats() = viewModelScope.launch {
+        val followers = container.auth.tiktokFollowers()
+        if (followers == null) {
+            _status("TikTok: нет актуального токена или scope user.info.stats не одобрен")
+        } else {
+            container.workspace.updateProfile { it.copy(tiktokFollowers = followers) }
+            _status("TikTok: подписчиков $followers")
+        }
+    }
 
     fun startShift() {
         val state = shift.value
@@ -128,10 +198,15 @@ class WorkDayViewModel(application: Application) : AndroidViewModel(application)
 
     fun connectYoutube() {
         viewModelScope.launch {
+            val token = container.auth.accessToken(work.day.app.domain.model.AuthProvider.GOOGLE)
             val key = container.settings.youtubeApiKey()
             val channelId = container.workspace.profile.youtubeChannelId
-            notify("Запрашиваю публичную статистику канала…")
-            YouTubeDataApi().fetchChannelStats(key, channelId)
+            if (token == null && key.isBlank()) {
+                _status("Нужен вход через Google или ключ YouTube Data API")
+                return@launch
+            }
+            notify("Запрашиваю статистику канала ${if (token != null) "по токену входа" else "по API-ключу"}…")
+            YouTubeDataApi().fetchChannelStats(key, channelId, token)
                 .onSuccess { stats ->
                     container.workspace.updateProfile { container.youtube.applyTo(stats, it) }
                     notify("YouTube: ${stats.title}, подписчиков ${stats.subscribers}, просмотров ${stats.views}")
@@ -173,7 +248,7 @@ class WorkDayViewModel(application: Application) : AndroidViewModel(application)
         notify("Данные очищены")
     }
 
-    private fun notify(text: String) {
-        _messages.tryEmit(text)
-    }
+    private fun notify(text: String) = _status(text)
+
+    private fun _status(text: String) = container.notifyAuth(text)
 }

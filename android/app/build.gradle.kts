@@ -11,6 +11,14 @@ android {
 
     defaultConfig {
         applicationId = "work.day.app"
+        // Хост и путь страницы-перехвата для OAuth (App Link). Задаются в gradle.properties:
+        //   workday.authCallbackHost=klavish777.github.io
+        //   workday.authCallbackPath=/auth-callback/
+        manifestPlaceholders["authCallbackHost"] =
+            (project.findProperty("workday.authCallbackHost") as String?) ?: "localhost"
+        manifestPlaceholders["authCallbackPath"] =
+            (project.findProperty("workday.authCallbackPath") as String?) ?: "/auth-callback/"
+
         minSdk = 26
         targetSdk = 35
         versionCode = 1
@@ -67,6 +75,11 @@ dependencies {
     implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.7.3")
     implementation("androidx.datastore:datastore-preferences:1.1.1")
     implementation("com.squareup.okhttp3:okhttp:4.12.0")
+
+    // авторизация: Custom Tabs для OAuth и Keystore-хранилище токенов
+    implementation("androidx.browser:browser:1.8.0")
+    implementation("androidx.security:security-crypto:1.1.0-alpha07")
+    implementation("androidx.lifecycle:lifecycle-runtime-ktx:2.8.7")
 
     debugImplementation("androidx.compose.ui:ui-tooling")
     debugImplementation("androidx.compose.ui:ui-test-manifest")

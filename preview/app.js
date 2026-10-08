@@ -223,16 +223,251 @@ function startShift(){
 function pauseShift(){ if(S.phase!=='working')return; clearInterval(S.timer); S.timer=null; S.phase='paused'; log(null,'info','смена на паузе'); render(); }
 function stopShift(){ clearInterval(S.timer); S.timer=null; S.phase='idle'; S.clock=SHIFT_START; render(); }
 
+/* ═══════════════════════════════════════════════════════════════════
+   Авторизация. Зеркалит Kotlin-слой data/auth: Google и TikTok — OAuth
+   с PKCE и редиректом на кастомную схему, логин/пароль — Firebase, если задан
+   API-ключ, иначе локальный аккаунт устройства. В браузере нет ни браузера-вкладки,
+   ни PBKDF2, поэтому здесь имитируются ровно те же проверки, что в коде приложения.
+   ═══════════════════════════════════════════════════════════════════ */
+const A = (() => {
+  const READ_ONLY = {
+    google: ['youtube.readonly', 'yt-analytics.readonly'],
+    tiktok: ['user.info.basic', 'video.list'],
+  };
+  const BANNED = ['upload', 'force-ssl', 'insert', 'update', 'delete', 'moderation', 'publish'];
+  let unlocked = false;
+  let pending = null;
+
+  const state = () => S.auth;
+
+  function needsAuth() { const a = state(); return !(a.session.links.length || a.session.email || a.session.guest); }
+
+  function validateEmail(email) { return /.+@.+\..+|.+@.+/.test(email.trim()) && email.trim().length > 5; }
+  function validatePassword(pw) { return typeof pw === 'string' && pw.length >= 6; }
+
+  // тот же набор проверок, что в AuthRepository.validate/register
+  function checkCredentials(email, password, confirm, mode) {
+    const errors = [];
+    if (!validateEmail(email)) errors.push('Нужен корректный email');
+    if (!validatePassword(password)) errors.push('Пароль от 6 символов');
+    if (mode === 'register' && password !== confirm) errors.push('Пароли не совпадают');
+    if (mode === 'register' && state().session.email && state().session.email !== email.trim().toLowerCase()) {
+      if (state().clients.firebase) errors.push('Такой email уже зарегистрирован');
+    }
+    return errors;
+  }
+
+  // «хеш» в прототипе — не криптография, а имитация: пароль нигде не сохраняется
+  function fakeHash(pw, salt) { let h = 2166136261; const src = salt + pw + salt;
+    for (let i = 0; i < src.length; i++) { h ^= src.charCodeAt(i); h = Math.imul(h, 16777619); }
+    return (h >>> 0).toString(16).padStart(8, '0').repeat(8).slice(0, 64); }
+
+  function register(email, password, confirm) {
+    const errors = checkCredentials(email, password, confirm, 'register');
+    if (errors.length) return { ok: false, errors };
+    const salt = Math.random().toString(36).slice(2, 10);
+    const a = state();
+    a.session.email = email.trim().toLowerCase();
+    a.session.passwordSalt = salt;
+    a.session.passwordHash = fakeHash(password, salt);
+    a.session.lockEnabled = true;
+    a.session.guest = false;
+    a.backend = a.clients.firebase ? 'firebase' : 'local';
+    log(null, 'info', a.backend === 'firebase' ? 'Аккаунт создан в Firebase' : 'Пароль установлен, приложение под замком');
+    return { ok: true, lock: true };
+  }
+
+  function signIn(email, password) {
+    const a = state();
+    const errors = checkCredentials(email, password, password, 'signin').filter(e => e !== 'Пароли не совпадают');
+    if (errors.length) return { ok: false, errors };
+    if (!a.session.passwordHash) return { ok: false, errors: ['Аккаунта на этом устройстве нет — зарегистрируйся'] };
+    if (a.session.email !== email.trim().toLowerCase()) return { ok: false, errors: ['Почта не совпадает с указанной при регистрации'] };
+    if (fakeHash(password, a.session.passwordSalt) !== a.session.passwordHash) return { ok: false, errors: ['Неверный пароль'] };
+    a.session.guest = false;
+    return { ok: true };
+  }
+
+  function beginLink(provider) {
+    const a = state();
+    const id = provider === 'google' ? a.clients.google : a.clients.tiktok;
+    if (!id) return { ok: false, error: provider === 'google' ? 'В настройках не указан Google Client ID' : 'В настройках не указан TikTok Client Key' };
+    pending = { provider, verifier: Math.random().toString(36).slice(2) + Math.random().toString(36).slice(2), state: Math.random().toString(36).slice(2, 12) };
+    const scopes = READ_ONLY[provider];
+    if (scopes.some(s => BANNED.some(b => s.includes(b)))) return { ok: false, error: 'внутренняя ошибка: запрещённый scope' };
+    const url = (provider === 'google' ? 'https://accounts.google.com/o/oauth2/v2/auth' : 'https://www.tiktok.com/v2/auth/authorize/')
+      + '?client_' + (provider === 'google' ? 'id' : 'key') + '=' + encodeURIComponent(id)
+      + '&redirect_uri=' + encodeURIComponent(a.clients.redirect)
+      // у Google scope разделяются пробелом, у TikTok — запятой: перепутать значит получить отказ
+      + '&response_type=code&scope=' + encodeURIComponent(scopes.join(provider === 'tiktok' ? ',' : ' '))
+      + '&code_challenge_method=S256&state=' + pending.state;
+    return { ok: true, url, scopes };
+  }
+
+  /** Симуляция возврата из браузера: state обязательно должен совпасть. */
+  function completeLink(queryState, opts = {}) {
+    const a = state();
+    if (!pending) return { ok: false, error: 'Авторизация не начата или устарела (лимит 5 минут)' };
+    if (opts.error) { const e = 'отказ авторизации: ' + opts.error; pending = null; return { ok: false, error: e }; }
+    if (queryState !== pending.state) return { ok: false, error: 'state не совпал — редирект отклонён' };
+    if (!opts.code) return { ok: false, error: 'в редиректе нет code' };
+    const provider = pending.provider;
+    pending = null;
+    const link = {
+      provider,
+      subject: opts.subject || (provider === 'google' ? 'g-' + Math.random().toString(36).slice(2, 9) : 'tt-' + Math.random().toString(36).slice(2, 9)),
+      name: opts.name || (provider === 'google' ? 'Канал автора' : '@workday.channel'),
+      email: provider === 'google' ? (opts.email || 'author@gmail.com') : '',
+      scopes: READ_ONLY[provider],
+      expiresAt: Date.now() + 3600 * 1000,
+      canRefresh: true,
+      followers: opts.followers || 0,
+    };
+    a.session.links = a.session.links.filter(l => l.provider !== provider).concat([link]);
+    a.session.guest = false;
+    if (provider === 'google' && link.followers) S.profile.youtube = link.subject;
+    log(null, 'done', provider === 'google' ? `YouTube подключён: ${link.followers.toLocaleString('ru-RU')} подписчиков` : `TikTok подключён${link.followers ? ': ' + link.followers.toLocaleString('ru-RU') + ' подписчиков' : ' (stats-скоуп не одобрен — цифр нет)'}`);
+    return { ok: true, link };
+  }
+
+  function revoke(provider) {
+    const a = state();
+    a.session.links = a.session.links.filter(l => l.provider !== provider);
+    log(null, 'warn', provider === 'google' ? 'Google отвязан, токен отозван' : 'TikTok отвязан');
+  }
+
+  function expiryText(link) {
+    if (!link.expiresAt) return 'без срока';
+    const left = Math.round((link.expiresAt - Date.now()) / 60000);
+    if (left <= 0) return link.canRefresh ? 'токен истёк, обновлю сам' : 'токен истёк — войди заново';
+    return `действует ещё ${left} мин`;
+  }
+
+  return { needsAuth, validateEmail, validatePassword, checkCredentials, register, signIn, beginLink, completeLink, revoke, expiryText,
+           unlock: (pw) => { const a = state(); if (!a.session.passwordHash) { unlocked = true; return true; }
+                             if (fakeHash(pw, a.session.passwordSalt) === a.session.passwordHash) { unlocked = true; return true; } return false; },
+           isLocked: () => state().session.lockEnabled && !unlocked,
+           forceUnlock: () => { unlocked = true; }, scopesFor: (p) => READ_ONLY[p].slice(), state };
+})();
+
+S.auth = { session: { links: [], email: '', guest: false, lockEnabled: false, passwordHash: '', passwordSalt: '' },
+           clients: { google: '', tiktok: '', firebase: '', redirect: 'workdayauth://oauth2callback' }, backend: 'local' };
+
+function viewAuth() {
+  const a = S.auth;
+  const form = A_FORM;
+  const err = AUTH_ERRORS.length ? `<div class="panel" style="background:#26141a;border-color:#5b2635">${AUTH_ERRORS.map(e => `<div class="sub" style="color:#ffb3c1">• ${e}</div>`).join('')}</div>` : '';
+  return `<div class="sec" style="margin-top:10px">Work Day</div>
+  <div style="font-size:21px;font-weight:800;letter-spacing:-.4px">Смена из четырёх AI-агентов</div>
+  <div class="sub" style="margin:5px 0 14px">Прирост, привлечение, ускорение и активность для YouTube и TikTok. Вход не обязателен: без привязанных площадок агенты работают на демо-данных.</div>
+  ${err}
+  <div class="panel">
+    <div class="h" style="font-size:15px">Войти, чтобы видеть свои цифры</div>
+    ${[['google','▶','Google','канал, просмотры, удержание и источники трафика · только чтение','#ff4e45'],
+        ['tiktok','♪','TikTok','подписчики, лайки, список роликов · по одобренным scope','#25f4ee']].map(([k,icon,t,d,col])=>{
+      const ready = k==='google' ? !!a.clients.google : !!a.clients.tiktok;
+      const connected = a.session.links.some(l=>l.provider===k);
+      return `<div class="playbook" style="border:0;padding:8px 0">
+        <div class="ava" style="background:${col}22;color:${col}">${icon}</div>
+        <div class="grow"><div style="font-weight:700;font-size:14px">${t}</div><div class="sub" style="color:${ready?'var(--t2)':'var(--danger)'}">${ready?d:'нужен '+(k==='google'?'Google Client ID':'TikTok Client Key')+' в настройках'}</div></div>
+        <button class="pill" style="${connected?'background:var(--ok);color:#06231a':ready?'background:'+col:''}" ${connected||!ready?'disabled':''} onclick="linkStart('${k}')">${connected?'подключено':'подключить'}</button>
+      </div>`}).join('')}
+    <div class="sub" style="margin-top:6px">Права на публикацию, удаление и управление комментариями приложение не запрашивает — и не попросит: публиковать будешь сам.</div>
+  </div>
+
+  <div class="panel">
+    <div class="row sb"><div class="h" style="font-size:15px">Логин и пароль</div>
+      <span class="tag" style="color:var(--mint)">${a.clients.firebase?'Firebase Auth':'локальный режим'}</span></div>
+    <div class="sub" style="margin-top:5px">${a.clients.firebase
+      ? 'Аккаунт в твоём Firebase-проекте: пароль не хранится на устройстве, настройки переносимы.'
+      : 'Своего сервера нет, поэтому аккаунт создаётся на устройстве: пароль превращается в PBKDF2-хеш (210 000 итераций, случайная соль) и проверяется офлайн. Это замок на приложение, а не переносимый аккаунт.'}</div>
+    <div class="chips" style="margin-top:11px">${[['signin','Вход'],['register','Регистрация'],['reset','Забыли?']].map(([k,l])=>`<button class="pill ${form===k?'on':''}" style="${form===k?'background:var(--violet)':''}" onclick="A_FORM='${k}';AUTH_ERRORS=[];render()">${l}</button>`).join('')}</div>
+    <label class="lbl">Почта</label><input class="field" id="f_email" value="${A_EMAIL}" oninput="A_EMAIL=this.value">
+    ${form!=='reset'?`<label class="lbl">Пароль</label><input class="field" id="f_pw" type="password" value="${A_PW}" oninput="A_PW=this.value">`:''}
+    ${form==='register'?`<label class="lbl">Повтори пароль</label><input class="field" id="f_pw2" type="password" value="${A_PW2}" oninput="A_PW2=this.value">`:''}
+    <div class="row" style="margin-top:12px">
+      ${form==='reset'
+        ? `<button class="btn" onclick="doReset()">Письмо для сброса</button>`
+        : `<button class="btn" onclick="${form==='register'?'doRegister()':'doSignIn()'}">${form==='register'?'Создать аккаунт':'Войти'}</button>`}
+      <button class="btn ghost" onclick="S.auth.session.guest=true;render()">Без входа</button>
+    </div>
+  </div>`;
+}
+
+let A_FORM='signin', A_EMAIL='', A_PW='', A_PW2='', AUTH_ERRORS=[];
+
+function doRegister(){ const r=A.register(A_EMAIL,A_PW,A_PW2); AUTH_ERRORS=r.ok?[]:r.errors; if(r.ok){A_PW='';A_PW2='';toast('Аккаунт создан · приложение под замком');} render(); }
+function doSignIn(){ const r=A.signIn(A_EMAIL,A_PW); AUTH_ERRORS=r.ok?[]:r.errors; if(r.ok){A_PW='';A.forceUnlock();render();} else render(); }
+function doReset(){ if(!S.auth.clients.firebase){AUTH_ERRORS=['Сброс по почте доступен, когда подключён Firebase'];return render();} toast('Письмо для сброса отправлено'); }
+function linkStart(provider){
+  const r = A.beginLink(provider);
+  if(!r.ok){ AUTH_ERRORS=[r.error]; return render(); }
+  toast('Открываю страницу согласия '+(provider==='google'?'Google':'TikTok')+' · редирект '+S.auth.clients.redirect);
+  const state = new URL(r.url).searchParams.get('state');
+  setTimeout(()=>{
+    const followers = provider==='google' ? 18420 + Math.floor(Math.random()*900) : 27150 + Math.floor(Math.random()*1500);
+    const back = A.completeLink(state, { code:'sim-'+Math.random().toString(36).slice(2,8), followers, name: provider==='google'?'Канал съёмки на телефон':'@workday.channel' });
+    if(!back.ok) AUTH_ERRORS=[back.error];
+    render();
+  }, 700);
+}
+function viewLock(){
+  return `<div class="panel" style="margin-top:80px">
+    <div class="h">Work Day</div>
+    <div class="sub">${S.auth.session.email?'Приложение защищено паролем · '+S.auth.session.email:'Приложение защищено паролем'}</div>
+    <label class="lbl">Пароль</label><input class="field" type="password" id="lock_pw" oninput="LOCK_PW=this.value">
+    <div class="row" style="margin-top:12px"><button class="btn" onclick="tryUnlock()">Разблокировать</button></div>
+    <div class="sub" style="margin-top:9px">Проверка локальным PBKDF2-хешем, поэтому работает без сети. Восстановить пароль нельзя — только сброс данных.</div>
+  </div>`;
+}
+let LOCK_PW='';
+function tryUnlock(){ if(A.unlock(LOCK_PW)){LOCK_PW='';render();} else toast('Пароль не подошёл'); }
+
+function viewAccount(){
+  const a=S.auth;
+  return `<div class="sec" style="margin-top:4px">Аккаунт и доступы</div>
+  <div class="panel"><div class="sub">Токены лежат в Android Keystore (в прототипе — в памяти вкладки). В выгрузку настроек и в логи они не попадают.</div>
+  ${a.session.links.length? a.session.links.map(l=>`<div class="playbook" style="border-bottom:1px dashed #232a3d">
+      <div class="ava" style="width:30px;height:30px;font-size:14px;background:${l.provider==='google'?'#ff4e4522':'#25f4ee22'}">${l.provider==='google'?'▶':'♪'}</div>
+      <div class="grow"><div style="font-weight:700;font-size:13.5px">${l.provider==='google'?'Google':'TikTok'} · ${l.name}</div>
+      <div class="sub">${[l.email, 'scope: '+l.scopes.join(' '), A.expiryText(l), l.followers?('подписчиков: '+l.followers.toLocaleString('ru-RU')):''].filter(Boolean).join(' · ')}</div></div>
+      <button class="pill" onclick="A.revoke('${l.provider}');render()">Отвязать</button></div>`).join('')
+    : `<div class="sub" style="margin-top:8px">Ни один провайдер не привязан. Агенты работают на демо-данных и офлайн-движке.</div>`}
+  <div class="chips" style="margin-top:11px">
+    <button class="pill" onclick="linkStart('google')">Подключить Google</button>
+    <button class="pill" onclick="linkStart('tiktok')">Подключить TikTok</button>
+    <button class="pill" onclick="S.auth={...S.auth,session:{links:[],email:'',guest:false,lockEnabled:false,passwordHash:'',passwordSalt:''}};render()">Выйти и отвязать всё</button>
+  </div></div>
+  <div class="sec">Клиенты авторизации</div>
+  <div class="panel"><div class="sub">Work Day — публичный клиент: секрета приложения у него нет и быть не может. Google настраивается клиентом «Android» (пакет + SHA-1 сборки), TikTok — Client Key из твоего приложения в TikTok for Developers с тем же redirect.</div>
+    <label class="lbl">Google Client ID</label><input class="field" value="${a.clients.google}" oninput="S.auth.clients.google=this.value" placeholder="xxxx.apps.googleusercontent.com">
+    <label class="lbl">TikTok Client Key</label><input class="field" value="${a.clients.tiktok}" oninput="S.auth.clients.tiktok=this.value" placeholder="aw…">
+    <label class="lbl">Firebase Web API Key</label><input class="field" value="${a.clients.firebase}" oninput="S.auth.clients.firebase=this.value" placeholder="AIza…">
+    <label class="lbl">Redirect URI</label><input class="field" value="${a.clients.redirect}" oninput="S.auth.clients.redirect=this.value">
+    <div class="sub" style="margin-top:8px">В прототипе поля не сохраняются; в приложении — да, на устройстве.</div>
+  </div>
+  <div class="sec">Замок на приложении</div>
+  <div class="panel"><div class="row"><div class="grow"><div style="font-weight:700;font-size:14px">${a.session.lockEnabled?'Включён':'Выключен'}</div>
+    <div class="sub">${a.session.email?'аккаунт '+a.session.email:'аккаунт не заведён'} · режим ${a.backend==='firebase'?'Firebase':'локальный хеш'}</div></div>
+    <div class="switch ${a.session.lockEnabled?'on':''}" onclick="S.auth.session.lockEnabled=!S.auth.session.lockEnabled;render()"><i></i></div></div>
+    <div class="sub" style="margin-top:8px">Даже если аккаунт заведён в Firebase, пароль устройства сверяется локальным хешем: в метро запрос к Firebase не должен быть условием входа в свои заметки.</div></div>`;
+}
+
 /* ═══ RENDER ═══ */
-const TABS=[['shift','Смена','M4 5h16v14H4z M4 9h16'],['agents','Агенты','M12 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8m-7 8a7 7 0 0 1 14 0'],['tasks','Задачи','M5 7h14M5 12h14M5 17h9'],['growth','Рост','M4 19V9m5 10V5m5 14v-7m5 7V8'],['settings','Настройки','M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6m7-3a7 7 0 0 0-.1-1l2-1.5-2-3.4-2.3 1a7 7 0 0 0-1.7-1L12.5 2h-4l-.4 2.6a7 7 0 0 0-1.7 1l-2.3-1-2 3.4L4.1 9.5a7 7 0 0 0 0 2L2.1 13l2 3.4 2.3-1a7 7 0 0 0 1.7 1l.4 2.6h4l.4-2.6a7 7 0 0 0 1.7-1l2.3 1 2-3.4-2-1.5c.1-.3.1-.7.1-1z']];
+const TABS=[['shift','Смена','M4 5h16v14H4z M4 9h16'],['agents','Агенты','M12 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8m-7 8a7 7 0 0 1 14 0'],['tasks','Задачи','M5 7h14M5 12h14M5 17h9'],['growth','Рост','M4 19V9m5 10V5m5 14v-7m5 7V8'],['account','Аккаунт','M9 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8m-6 8a6 6 0 0 1 12 0M17 8h4m-2-2v4'],['settings','Настройки','M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6m7-3a7 7 0 0 0-.1-1l2-1.5-2-3.4-2.3 1a7 7 0 0 0-1.7-1L12.5 2h-4l-.4 2.6a7 7 0 0 0-1.7 1l-2.3-1-2 3.4L4.1 9.5a7 7 0 0 0 0 2L2.1 13l2 3.4 2.3-1a7 7 0 0 0 1.7 1l.4 2.6h4l.4-2.6a7 7 0 0 0 1.7-1l2.3 1 2-3.4-2-1.5c.1-.3.1-.7.1-1z']];
 
 function render(){
   document.getElementById('sbClock').textContent=clock(S.clock);
+  if (A.isLocked() || A.needsAuth()) {
+    document.getElementById('tabbar').innerHTML='';
+    document.getElementById('screen').innerHTML = A.isLocked() ? viewLock() : viewAuth();
+    return;
+  }
   const pending=S.tasks.filter(t=>t.status==='approval').length;
   document.getElementById('tabbar').innerHTML = TABS.map(([k,label,path])=>
     `<button class="${S.tab===k?'on':''}" onclick="S.tab='${k}';render()"><span style="position:relative">${pending&&k==='tasks'?`<span class="badge">${pending}</span>`:''}<svg viewBox="0 0 24 24"><path d="${path}"/></svg></span>${label}</button>`).join('');
   const el=document.getElementById('screen');
-  el.innerHTML = ({shift:viewShift,agents:viewAgents,tasks:viewTasks,growth:viewGrowth,settings:viewSettings})[S.tab]();
+  el.innerHTML = ({shift:viewShift,agents:viewAgents,tasks:viewTasks,growth:viewGrowth,account:viewAccount,settings:viewSettings})[S.tab]();
 }
 
 function phaseLabel(){return {idle:'смена не идёт',planning:'распределяем задачи',working:'идёт смена',paused:'пауза',finished:'смена закрыта'}[S.phase]}
@@ -469,6 +704,7 @@ window.startShift=startShift; window.pauseShift=pauseShift; window.stopShift=sto
 window.importCsv=importCsv; window.PLAT_SET=()=>{};
 render();
 
+
 /*
  * Крючок для теста: preview/engine.test.js подставляет globalThis.__WORKDAY_TEST_HOOK__
  * и забирает себе чистые функции движка. В браузере хука нет — файл ведёт себя как обычный скрипт.
@@ -480,5 +716,6 @@ if (typeof globalThis.__WORKDAY_TEST_HOOK__ === 'function') {
     togglePb, byId, clock, series, log,
     viewShift, viewAgents, viewTasks, viewGrowth, viewSettings,
     SHIFT_START, SHIFT_END,
+    A, viewAuth, viewLock, viewAccount, linkStart, doSignIn, doRegister, doReset, tryUnlock,
   });
 }
