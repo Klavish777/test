@@ -204,6 +204,26 @@ class WorkDayViewModel(application: Application) : AndroidViewModel(application)
 
     fun exportRecipe(): String = generation.value.plan?.let { container.generation.exportRecipe(it) }.orEmpty()
 
+    /**
+     * Сохранить рецепт рядом с рабочими файлами, чтобы забрать его на компьютер
+     * (файловый менеджер или adb pull) и там запустить render.sh. Рендер на телефоне
+     * не делаем сознательно: склейка — работа ffmpeg, а не приложения.
+     */
+    fun saveRecipe() {
+        val plan = generation.value.plan
+        if (plan == null) {
+            _status("Сначала собери ролик — сохранять пока нечего")
+            return
+        }
+        runCatching {
+            val dir = java.io.File(container.appContext.filesDir, "work_day").apply { mkdirs() }
+            val file = java.io.File(dir, "recipe-${plan.id}.txt")
+            file.writeText(container.generation.exportRecipe(plan))
+            file.absolutePath
+        }.onSuccess { _status("Рецепт сохранён: $it") }
+            .onFailure { _status("Не сохранилось: ${it.message?.take(120)}") }
+    }
+
     fun generationNiches(): List<String> = container.generation.niches
 
     /** TikTok-статистика, если токен жив — обновляет followers в профиле. */

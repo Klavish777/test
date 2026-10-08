@@ -408,6 +408,10 @@ private fun PlanCard(plan: GenerationPlan, busy: Boolean, vm: WorkDayViewModel) 
         if (showRecipe) {
             Spacer(Modifier.height(10.dp))
             Text(plan.recipe.notes, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.outline)
+            Spacer(Modifier.height(6.dp))
+            TextButton(onClick = { vm.saveRecipe() }) {
+                Text("Сохранить recipe-файл в приложение", color = ACCENT)
+            }
             Spacer(Modifier.height(8.dp))
             Box(
                 Modifier

@@ -156,6 +156,9 @@ class AppContainer(private val app: Application) {
     fun tokenStorageLabel(): String =
         if (secureStore.degraded()) "приватный файл (Keystore недоступен)" else "Android Keystore"
 
+    /** Контекст приложения — нужен ровно для одного: отдать путь к файлу из UI (экспорт рецепта). */
+    val appContext: android.content.Context get() = app
+
     fun saveAuthClients(clients: AuthClients) {
         clientsStore.replace(clients)
     }
