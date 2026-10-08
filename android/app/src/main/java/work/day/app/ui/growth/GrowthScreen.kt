@@ -151,9 +151,9 @@ fun GrowthScreen(vm: WorkDayViewModel, modifier: Modifier = Modifier) {
             Panel {
                 Text("Цели Work Day", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
                 Spacer(Modifier.height(10.dp))
-                GoalRow("Новые подписчики / нед", 128.0, (goals?.newSubscribersPerWeek ?: 350).toDouble(), Color(0xFF5B5CFF))
+                GoalRow("Новые подписчики / нед", weekGrowth(series), (goals?.newSubscribersPerWeek ?: 350).toDouble(), Color(0xFF5B5CFF))
                 GoalRow("Задач закрыто сегодня", shift.doneTasks.toDouble(), shift.plannedTasks.coerceAtLeast(1).toDouble(), Color(0xFF12B886))
-                GoalRow("На одобрении", (shift.pendingApproval == 0).toDouble(), 1.0, Color(0xFFFFD23F))
+                GoalRow("На одобрении", if (shift.pendingApproval == 0) 1.0 else 0.0, 1.0, Color(0xFFFFD23F))
                 GoalRow("Удержание", last?.retentionPct ?: 0.0, goals?.retentionPct ?: 45.0, Color(0xFFFF8A3D))
                 Text(
                     "Цели заданы автору, а не алгоритму: агент подстраивает план смены под них, но не обещает, что они будут достигнуты.",
@@ -260,6 +260,13 @@ private fun GoalRow(label: String, current: Double, target: Double, color: Color
         Spacer(Modifier.height(6.dp))
         ProgressBar(progress, color)
     }
+}
+
+/** Прирост подписчиков за последние 7 дней по импортированной/демо-истории. */
+private fun weekGrowth(series: List<DailyMetrics>): Double {
+    val s = series.sortedBy { it.date }
+    if (s.size < 8) return 0.0
+    return (s.last().subscribers - s[s.size - 8].subscribers).toDouble().coerceAtLeast(0.0)
 }
 
 private fun metricOf(m: DailyMetrics, metric: ChartMetric): Double = value(m, metric)

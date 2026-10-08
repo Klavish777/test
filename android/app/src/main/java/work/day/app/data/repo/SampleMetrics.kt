@@ -22,7 +22,7 @@ object SampleMetrics {
         }
 
     private fun row(date: LocalDate, index: Int, platform: Platform): DailyMetrics {
-        val seed = (date.toEpochDay() * 2654435761u).toInt()
+        val seed = (date.toEpochDay() * 2654435761L).toInt() and 0x7FFFFFFF
         val weekend = if (date.dayOfWeek.value >= 6) 1.18 else 1.0
         val wave = 1.0 + 0.14 * sin(index / 3.1)
         val ramp = 1.0 + index / 55.0

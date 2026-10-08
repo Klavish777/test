@@ -248,7 +248,7 @@ private fun AgentDetail(vm: WorkDayViewModel, agentId: AgentId) {
                                 TaskStatus.NEEDS_APPROVAL -> Color(0xFFFFD23F)
                                 TaskStatus.DONE, TaskStatus.QUEUED -> Color(0xFF4ADE80)
                                 TaskStatus.FAILED -> Color(0xFFFF5C7A)
-                                else -> MaterialTheme.colorScheme.onSurfaceVariant,
+                                else -> MaterialTheme.colorScheme.onSurfaceVariant
                             },
                         )
                     }

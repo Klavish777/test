@@ -33,7 +33,7 @@ class AgentPlanningTest {
     @Test
     fun `plan respects intensity`() {
         val agent = AgentRegistry.get(AgentId.MAGNET)
-        val window = ShiftWindow("2026-10-08", 20643, 9 * 60, 18 * 60)
+        val window = ShiftWindow("2026-10-08", 20643L, 9 * 60, 18 * 60)
         val low = agent.plan(AgentConfig(AgentId.MAGNET, intensity = 1), profile, window)
         val high = agent.plan(AgentConfig(AgentId.MAGNET, intensity = 5), profile, window)
         assertTrue("слабая смена должна быть короче: ${low.size} vs ${high.size}", low.size < high.size)
@@ -43,7 +43,7 @@ class AgentPlanningTest {
     @Test
     fun `disabled agent plans nothing`() {
         val agent = AgentRegistry.get(AgentId.SPARK)
-        val window = ShiftWindow("2026-10-08", 1, 9 * 60, 18 * 60)
+        val window = ShiftWindow("2026-10-08", 1L, 9 * 60, 18 * 60)
         assertTrue(agent.plan(AgentConfig(AgentId.SPARK, enabled = false), profile, window).isEmpty())
     }
 
@@ -75,7 +75,7 @@ class AgentPlanningTest {
     fun `playbook ids resolve to kinds`() {
         AgentId.ordered.forEach { id ->
             val ids = Playbooks.forAgent(id).map { it.id }.toSet()
-            assertEquals("дубли плейбуков у $id", ids.size, Playbooks.forAgent(id).size)
+            assertTrue("дубли плейбуков у $id", ids.size == Playbooks.forAgent(id).size)
             assertTrue(Playbooks.kindsOf(id, ids).isNotEmpty())
         }
     }
@@ -84,7 +84,7 @@ class AgentPlanningTest {
 class LlmRoutingTest {
     @Test
     fun `no key means offline engine`() {
-        assertEquals(OfflineLlm().source, llmSourceFor(false))
+        assertTrue(OfflineLlm().source == llmSourceFor(false))
     }
 
     @Test
@@ -111,7 +111,7 @@ class AnalyticsImportTest {
         """.trimIndent()
         val rows = AnalyticsImporter.parse(csv).getOrThrow()
         assertEquals(2, rows.size)
-        assertEquals(5210L, rows[0].views)
+        assertTrue(rows[0].views == 5210L)
         assertEquals(work.day.app.domain.model.Platform.TIKTOK, rows[1].platform)
     }
 
@@ -120,7 +120,7 @@ class AnalyticsImportTest {
         val csv = "дата;просмотры\n05.10.2026;900"
         val rows = AnalyticsImporter.parse(csv).getOrThrow()
         assertEquals("2026-10-05", rows.first().date)
-        assertEquals(900L, rows.first().views)
+        assertTrue(rows.first().views == 900L)
     }
 
     @Test

@@ -33,6 +33,9 @@ import work.day.app.domain.model.ShiftEvent
 import work.day.app.domain.model.TaskKind
 import work.day.app.domain.model.TaskStatus
 
+private const val DAY_START = 9 * 60
+private const val DAY_END = 18 * 60
+
 enum class ShiftPhase(val label: String) {
     IDLE("Смена не идёт"),
     PLANNING("Распределяем задачи"),
@@ -76,8 +79,8 @@ data class ShiftSnapshot(
     val runningCount: Int get() = tasks.count { it.status == TaskStatus.RUNNING }
     val shiftProgress: Float
         get() {
-            val total = (SHIFT_END - SHIFT_START).toFloat()
-            return ((clock - SHIFT_START) / total).coerceIn(0f, 1f)
+            val total = (DAY_END - DAY_START).toFloat()
+            return ((clock - DAY_START) / total).coerceIn(0f, 1f)
         }
 
     fun agent(agent: AgentId): AgentRuntime = agents[agent] ?: AgentRuntime(agent)
@@ -485,8 +488,8 @@ class ShiftEngine(
     }
 
     companion object {
-        const val SHIFT_START = 9 * 60
-        const val SHIFT_END = 18 * 60
+        const val SHIFT_START = DAY_START
+        const val SHIFT_END = DAY_END
         const val TICK_MS = 250L
         const val TICK_MINUTES = 6
 
