@@ -1,24 +1,31 @@
 ## Что упало
-e: file:///home/runner/work/test/test/android/app/src/main/java/work/day/app/data/repo/GenerationRepository.kt:140:9 Initializer required for destructuring declaration.
-e: file:///home/runner/work/test/test/android/app/src/main/java/work/day/app/data/repo/GenerationRepository.kt:140:14 Syntax error: Expecting a name.
-e: file:///home/runner/work/test/test/android/app/src/main/java/work/day/app/data/repo/GenerationRepository.kt:140:15 Syntax error: Expecting ')'.
-e: file:///home/runner/work/test/test/android/app/src/main/java/work/day/app/data/repo/GenerationRepository.kt:140:20 Syntax error: Unexpected tokens (use ';' to separate expressions on the same line).
-e: file:///home/runner/work/test/test/android/app/src/main/java/work/day/app/data/repo/GenerationRepository.kt:141:44 Unresolved reference 'beats'.
-e: file:///home/runner/work/test/test/android/app/src/main/java/work/day/app/data/repo/GenerationRepository.kt:141:58 Argument type mismatch: actual type is 'kotlin.Unit', but 'kotlin.collections.List<work.day.app.domain.model.AssetSpec>' was expected.
-e: file:///home/runner/work/test/test/android/app/src/main/java/work/day/app/data/repo/GenerationRepository.kt:141:58 Expression expected, but package name found.
-e: file:///home/runner/work/test/test/android/app/src/main/java/work/day/app/data/repo/GenerationRepository.kt:142:51 Unresolved reference 'beats'.
-e: file:///home/runner/work/test/test/android/app/src/main/java/work/day/app/data/repo/GenerationRepository.kt:143:53 Unresolved reference 'beats'.
-e: file:///home/runner/work/test/test/android/app/src/main/java/work/day/app/data/repo/GenerationRepository.kt:143:60 Argument type mismatch: actual type is 'kotlin.Unit', but 'kotlin.collections.List<work.day.app.domain.model.AssetSpec>' was expected.
-e: file:///home/runner/work/test/test/android/app/src/main/java/work/day/app/data/repo/GenerationRepository.kt:143:60 Expression expected, but package name found.
-e: file:///home/runner/work/test/test/android/app/src/main/java/work/day/app/data/repo/GenerationRepository.kt:144:45 Unresolved reference 'beats'.
-e: file:///home/runner/work/test/test/android/app/src/main/java/work/day/app/data/repo/GenerationRepository.kt:144:52 Argument type mismatch: actual type is 'kotlin.Unit', but 'kotlin.collections.List<work.day.app.domain.model.AssetSpec>' was expected.
-e: file:///home/runner/work/test/test/android/app/src/main/java/work/day/app/data/repo/GenerationRepository.kt:144:52 Expression expected, but package name found.
-e: file:///home/runner/work/test/test/android/app/src/main/java/work/day/app/data/repo/GenerationRepository.kt:149:21 Unresolved reference 'beats'.
-e: file:///home/runner/work/test/test/android/app/src/main/java/work/day/app/data/repo/GenerationRepository.kt:150:21 Unresolved reference 'edits'.
-e: file:///home/runner/work/test/test/android/app/src/main/java/work/day/app/data/repo/GenerationRepository.kt:151:22 Argument type mismatch: actual type is 'kotlin.Unit', but 'kotlin.collections.List<work.day.app.domain.model.AssetSpec>' was expected.
-e: file:///home/runner/work/test/test/android/app/src/main/java/work/day/app/data/repo/GenerationRepository.kt:151:22 Expression expected, but package name found.
-e: file:///home/runner/work/test/test/android/app/src/main/java/work/day/app/domain/agent/ViralEditor.kt:118:32 Const 'val' initializer should be a constant value.
-e: file:///home/runner/work/test/test/android/app/src/main/java/work/day/app/domain/engine/ViralLab.kt:502:27 Unresolved reference 'keepс'.
+e: file:///home/runner/work/test/test/android/app/src/test/java/work/day/app/GenerationTest.kt:137:9 Initializer required for destructuring declaration.
+e: file:///home/runner/work/test/test/android/app/src/test/java/work/day/app/GenerationTest.kt:137:14 Syntax error: Expecting a name.
+e: file:///home/runner/work/test/test/android/app/src/test/java/work/day/app/GenerationTest.kt:137:15 Syntax error: Expecting ')'.
+e: file:///home/runner/work/test/test/android/app/src/test/java/work/day/app/GenerationTest.kt:137:24 Syntax error: Unexpected tokens (use ';' to separate expressions on the same line).
+e: file:///home/runner/work/test/test/android/app/src/test/java/work/day/app/GenerationTest.kt:138:43 Unresolved reference 'beatsFull'.
+e: file:///home/runner/work/test/test/android/app/src/test/java/work/day/app/GenerationTest.kt:138:57 Unresolved reference 'assetsAfter'.
+e: file:///home/runner/work/test/test/android/app/src/test/java/work/day/app/GenerationTest.kt:140:66 Unresolved reference 'beatsFull'.
+e: file:///home/runner/work/test/test/android/app/src/test/java/work/day/app/GenerationTest.kt:140:82 Unresolved reference 'lengthSec'.
+e: file:///home/runner/work/test/test/android/app/src/test/java/work/day/app/GenerationTest.kt:140:84 Unresolved reference 'it'.
+e: file:///home/runner/work/test/test/android/app/src/test/java/work/day/app/GenerationTest.kt:141:9 Unresolved reference 'editsFull'.
+e: file:///home/runner/work/test/test/android/app/src/test/java/work/day/app/GenerationTest.kt:141:29 Cannot infer type for this parameter. Please specify it explicitly.
+e: file:///home/runner/work/test/test/android/app/src/test/java/work/day/app/GenerationTest.kt:142:55 Unresolved reference 'action'.
+e: file:///home/runner/work/test/test/android/app/src/test/java/work/day/app/GenerationTest.kt:142:70 Unresolved reference 'action'.
+e: file:///home/runner/work/test/test/android/app/src/test/java/work/day/app/GenerationTest.kt:142:98 Unresolved reference 'reason'.
+e: file:///home/runner/work/test/test/android/app/src/test/java/work/day/app/GenerationTest.kt:143:55 Unresolved reference 'delta'.
+e: file:///home/runner/work/test/test/android/app/src/test/java/work/day/app/GenerationTest.kt:151:9 Initializer required for destructuring declaration.
+e: file:///home/runner/work/test/test/android/app/src/test/java/work/day/app/GenerationTest.kt:151:14 Syntax error: Expecting a name.
+e: file:///home/runner/work/test/test/android/app/src/test/java/work/day/app/GenerationTest.kt:151:15 Syntax error: Expecting ')'.
+e: file:///home/runner/work/test/test/android/app/src/test/java/work/day/app/GenerationTest.kt:151:24 Syntax error: Unexpected tokens (use ';' to separate expressions on the same line).
+e: file:///home/runner/work/test/test/android/app/src/test/java/work/day/app/GenerationTest.kt:152:43 Unresolved reference 'beatsWeak'.
+e: file:///home/runner/work/test/test/android/app/src/test/java/work/day/app/GenerationTest.kt:152:57 Unresolved reference 'assetsWeak'.
+e: file:///home/runner/work/test/test/android/app/src/test/java/work/day/app/GenerationTest.kt:154:50 Unresolved reference 'editsWeak'.
+e: file:///home/runner/work/test/test/android/app/src/test/java/work/day/app/GenerationTest.kt:155:42 Unresolved reference 'assetsWeak'.
+e: file:///home/runner/work/test/test/android/app/src/test/java/work/day/app/GenerationTest.kt:155:59 Unresolved reference 'it'.
+e: file:///home/runner/work/test/test/android/app/src/test/java/work/day/app/GenerationTest.kt:156:48 Unresolved reference 'beatsWeak'.
+e: file:///home/runner/work/test/test/android/app/src/test/java/work/day/app/GenerationTest.kt:156:64 Unresolved reference 'it'.
+e: file:///home/runner/work/test/test/android/app/src/test/java/work/day/app/GenerationTest.kt:215:9 Name contains illegal characters: :.
 FAILURE: Build failed with an exception.
 * What went wrong:
 Caused by: org.gradle.workers.internal.DefaultWorkerExecutor$WorkExecutionException: A failure occurred while executing org.jetbrains.kotlin.compilerRunner.GradleCompilerRunnerWithWorkers$GradleKotlinCompilerWorkAction
@@ -48,5 +55,5 @@ Caused by: org.jetbrains.kotlin.gradle.tasks.CompilationErrorException: Compilat
 	... 2 more
 
 
-BUILD FAILED in 1m 43s
-17 actionable tasks: 16 executed, 1 from cache
+BUILD FAILED in 2m 4s
+22 actionable tasks: 21 executed, 1 from cache
