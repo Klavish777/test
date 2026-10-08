@@ -499,7 +499,7 @@ object ViralLab {
                 beatIndex = index,
                 action = "хук ужат до ${keep}с, остаток уехал в разогрев",
                 before = "${hook.lengthSec}с хука",
-                after = "$keepс + ${extra}с",
+                after = "${keep}с + ${extra}с",
                 reason = "в ${if (vertical) "Shorts" else "ленте"} решение о пролистке принимается за 2–3 секунды",
                 delta = 9,
             )

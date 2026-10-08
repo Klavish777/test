@@ -137,7 +137,10 @@ class GenerationRepository(
         }
         val assetsRaw = ViralLab.assetsFor(topic, spoken)
         val scoreBefore = ViralLab.critique(spoken, topic, assetsRaw)
-        val ((beats, assets), edits) = ViralLab.editPass(spoken, topic, assetsRaw)
+        val pass = ViralLab.editPass(spoken, topic, assetsRaw)
+        val beats = pass.first.first
+        val assets = pass.first.second
+        val edits = pass.second
         val scoreAfter = ViralLab.critique(beats, topic, assets)
         val packaging = ViralLab.packaging(topic, beats)
         val compliance = ViralLab.compliance(topic, beats, assets, packaging.title, packaging.description)
