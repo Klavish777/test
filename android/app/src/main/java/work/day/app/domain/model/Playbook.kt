@@ -31,7 +31,7 @@ object Playbooks {
             listOf(TaskKind.TREND_JACK)),
 
         // ── Разведчик ──────────────────────────────────────────────────────────
-        Playbook("scout.recyclig", AgentId.SCOUT, "Один материал — пять площадок",
+        Playbook("scout.recycling", AgentId.SCOUT, "Один материал — пять площадок",
             "Нарезка и адаптация существующего контента, а не новая съёмка.",
             "после каждого длинного ролика",
             listOf(TaskKind.LONG_TO_VERTICAL, TaskKind.CROSS_POST_COPY, TaskKind.LOCALIZATION)),

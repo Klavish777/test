@@ -107,7 +107,7 @@ class WorkDayViewModel(application: Application) : AndroidViewModel(application)
     fun saveLlm(enabled: Boolean, baseUrl: String, apiKey: String, model: String) {
         viewModelScope.launch {
             container.settings.setLlm(enabled, baseUrl, apiKey, model)
-            notify(if (enabled && apiKey.isNotBlank()) "Мель подключена: $model" else "Агенты работают на офлайн-движке")
+            notify(if (enabled && apiKey.isNotBlank()) "Модель подключена: $model" else "Агенты работают на офлайн-движке")
         }
     }
 
