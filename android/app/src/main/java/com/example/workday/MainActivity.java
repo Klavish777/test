@@ -407,7 +407,7 @@ public class MainActivity extends Activity {
     // ---------- мелкие помощники ----------
 
     private interface Action {
-        void run();
+        void run(View v);
     }
 
     private View row(String text, Action onDelete) {
@@ -424,7 +424,7 @@ public class MainActivity extends Activity {
         row.addView(t, new LinearLayout.LayoutParams(0,
                 ViewGroup.LayoutParams.WRAP_CONTENT, 1f));
 
-        row.addView(smallButton("✕", v -> onDelete.run()),
+        row.addView(smallButton("✕", v -> onDelete.run(v)),
                 new LinearLayout.LayoutParams(dp(52), dp(52)));
         return row;
     }
