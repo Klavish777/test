@@ -1,38 +1,16 @@
 ## Что упало
-e: file:///home/runner/work/test/test/android/app/src/test/java/work/day/app/GenerationTest.kt:137:9 Initializer required for destructuring declaration.
-e: file:///home/runner/work/test/test/android/app/src/test/java/work/day/app/GenerationTest.kt:137:14 Syntax error: Expecting a name.
-e: file:///home/runner/work/test/test/android/app/src/test/java/work/day/app/GenerationTest.kt:137:15 Syntax error: Expecting ')'.
-e: file:///home/runner/work/test/test/android/app/src/test/java/work/day/app/GenerationTest.kt:137:24 Syntax error: Unexpected tokens (use ';' to separate expressions on the same line).
-e: file:///home/runner/work/test/test/android/app/src/test/java/work/day/app/GenerationTest.kt:138:43 Unresolved reference 'beatsFull'.
-e: file:///home/runner/work/test/test/android/app/src/test/java/work/day/app/GenerationTest.kt:138:57 Unresolved reference 'assetsAfter'.
-e: file:///home/runner/work/test/test/android/app/src/test/java/work/day/app/GenerationTest.kt:140:66 Unresolved reference 'beatsFull'.
-e: file:///home/runner/work/test/test/android/app/src/test/java/work/day/app/GenerationTest.kt:140:82 Unresolved reference 'lengthSec'.
-e: file:///home/runner/work/test/test/android/app/src/test/java/work/day/app/GenerationTest.kt:140:84 Unresolved reference 'it'.
-e: file:///home/runner/work/test/test/android/app/src/test/java/work/day/app/GenerationTest.kt:141:9 Unresolved reference 'editsFull'.
-e: file:///home/runner/work/test/test/android/app/src/test/java/work/day/app/GenerationTest.kt:141:29 Cannot infer type for this parameter. Please specify it explicitly.
-e: file:///home/runner/work/test/test/android/app/src/test/java/work/day/app/GenerationTest.kt:142:55 Unresolved reference 'action'.
-e: file:///home/runner/work/test/test/android/app/src/test/java/work/day/app/GenerationTest.kt:142:70 Unresolved reference 'action'.
-e: file:///home/runner/work/test/test/android/app/src/test/java/work/day/app/GenerationTest.kt:142:98 Unresolved reference 'reason'.
-e: file:///home/runner/work/test/test/android/app/src/test/java/work/day/app/GenerationTest.kt:143:55 Unresolved reference 'delta'.
-e: file:///home/runner/work/test/test/android/app/src/test/java/work/day/app/GenerationTest.kt:151:9 Initializer required for destructuring declaration.
-e: file:///home/runner/work/test/test/android/app/src/test/java/work/day/app/GenerationTest.kt:151:14 Syntax error: Expecting a name.
-e: file:///home/runner/work/test/test/android/app/src/test/java/work/day/app/GenerationTest.kt:151:15 Syntax error: Expecting ')'.
-e: file:///home/runner/work/test/test/android/app/src/test/java/work/day/app/GenerationTest.kt:151:24 Syntax error: Unexpected tokens (use ';' to separate expressions on the same line).
-e: file:///home/runner/work/test/test/android/app/src/test/java/work/day/app/GenerationTest.kt:152:43 Unresolved reference 'beatsWeak'.
-e: file:///home/runner/work/test/test/android/app/src/test/java/work/day/app/GenerationTest.kt:152:57 Unresolved reference 'assetsWeak'.
-e: file:///home/runner/work/test/test/android/app/src/test/java/work/day/app/GenerationTest.kt:154:50 Unresolved reference 'editsWeak'.
-e: file:///home/runner/work/test/test/android/app/src/test/java/work/day/app/GenerationTest.kt:155:42 Unresolved reference 'assetsWeak'.
-e: file:///home/runner/work/test/test/android/app/src/test/java/work/day/app/GenerationTest.kt:155:59 Unresolved reference 'it'.
-e: file:///home/runner/work/test/test/android/app/src/test/java/work/day/app/GenerationTest.kt:156:48 Unresolved reference 'beatsWeak'.
-e: file:///home/runner/work/test/test/android/app/src/test/java/work/day/app/GenerationTest.kt:156:64 Unresolved reference 'it'.
-e: file:///home/runner/work/test/test/android/app/src/test/java/work/day/app/GenerationTest.kt:215:9 Name contains illegal characters: :.
 FAILURE: Build failed with an exception.
 * What went wrong:
-Caused by: org.gradle.workers.internal.DefaultWorkerExecutor$WorkExecutionException: A failure occurred while executing org.jetbrains.kotlin.compilerRunner.GradleCompilerRunnerWithWorkers$GradleKotlinCompilerWorkAction
-Caused by: org.jetbrains.kotlin.gradle.tasks.CompilationErrorException: Compilation error. See log for more details
+Caused by: org.gradle.api.internal.exceptions.MarkedVerificationException: There were failing tests. See the report at: file:///home/runner/work/test/test/android/app/build/reports/tests/testDebugUnitTest/index.html
+
+## Провалившиеся тесты
+* разбор ответов youtube — длительность, дата и скорость
+    java.lang.AssertionError
+    at work.day.app.ViralLabTest.разбор ответов youtube — длительность, дата и скорость(GenerationTest.kt:232)
 
 ## Хвост лога
-	at org.gradle.workers.internal.AbstractWorker$1.call(AbstractWorker.java:41)
+	at org.gradle.api.internal.tasks.execution.EventFiringTaskExecuter$1.call(EventFiringTaskExecuter.java:55)
+	at org.gradle.api.internal.tasks.execution.EventFiringTaskExecuter$1.call(EventFiringTaskExecuter.java:52)
 	at org.gradle.internal.operations.DefaultBuildOperationRunner$CallableBuildOperationWorker.execute(DefaultBuildOperationRunner.java:209)
 	at org.gradle.internal.operations.DefaultBuildOperationRunner$CallableBuildOperationWorker.execute(DefaultBuildOperationRunner.java:204)
 	at org.gradle.internal.operations.DefaultBuildOperationRunner$2.execute(DefaultBuildOperationRunner.java:66)
@@ -40,20 +18,19 @@ Caused by: org.jetbrains.kotlin.gradle.tasks.CompilationErrorException: Compilat
 	at org.gradle.internal.operations.DefaultBuildOperationRunner.execute(DefaultBuildOperationRunner.java:166)
 	at org.gradle.internal.operations.DefaultBuildOperationRunner.execute(DefaultBuildOperationRunner.java:59)
 	at org.gradle.internal.operations.DefaultBuildOperationRunner.call(DefaultBuildOperationRunner.java:53)
-	at org.gradle.workers.internal.AbstractWorker.executeWrappedInBuildOperation(AbstractWorker.java:41)
-	at org.gradle.workers.internal.NoIsolationWorkerFactory$1.execute(NoIsolationWorkerFactory.java:59)
-	at org.gradle.workers.internal.DefaultWorkerExecutor.lambda$submitWork$0(DefaultWorkerExecutor.java:174)
-	at org.gradle.internal.work.DefaultConditionalExecutionQueue$ExecutionRunner.runExecution(DefaultConditionalExecutionQueue.java:194)
-	at org.gradle.internal.work.DefaultConditionalExecutionQueue$ExecutionRunner.access$700(DefaultConditionalExecutionQueue.java:127)
-	at org.gradle.internal.work.DefaultConditionalExecutionQueue$ExecutionRunner$1.run(DefaultConditionalExecutionQueue.java:169)
-	at org.gradle.internal.Factories$1.create(Factories.java:31)
-	at org.gradle.internal.work.DefaultWorkerLeaseService.withLocks(DefaultWorkerLeaseService.java:263)
-	at org.gradle.internal.work.DefaultWorkerLeaseService.runAsWorkerThread(DefaultWorkerLeaseService.java:127)
-	at org.gradle.internal.work.DefaultWorkerLeaseService.runAsWorkerThread(DefaultWorkerLeaseService.java:132)
-	at org.gradle.internal.work.DefaultConditionalExecutionQueue$ExecutionRunner.runBatch(DefaultConditionalExecutionQueue.java:164)
-	at org.gradle.internal.work.DefaultConditionalExecutionQueue$ExecutionRunner.run(DefaultConditionalExecutionQueue.java:133)
-	... 2 more
+	at org.gradle.api.internal.tasks.execution.EventFiringTaskExecuter.execute(EventFiringTaskExecuter.java:52)
+	at org.gradle.execution.plan.LocalTaskNodeExecutor.execute(LocalTaskNodeExecutor.java:42)
+	at org.gradle.execution.taskgraph.DefaultTaskExecutionGraph$InvokeNodeExecutorsAction.execute(DefaultTaskExecutionGraph.java:331)
+	at org.gradle.execution.taskgraph.DefaultTaskExecutionGraph$InvokeNodeExecutorsAction.execute(DefaultTaskExecutionGraph.java:318)
+	at org.gradle.execution.taskgraph.DefaultTaskExecutionGraph$BuildOperationAwareExecutionAction.lambda$execute$0(DefaultTaskExecutionGraph.java:314)
+	at org.gradle.internal.operations.CurrentBuildOperationRef.with(CurrentBuildOperationRef.java:85)
+	at org.gradle.execution.taskgraph.DefaultTaskExecutionGraph$BuildOperationAwareExecutionAction.execute(DefaultTaskExecutionGraph.java:314)
+	at org.gradle.execution.taskgraph.DefaultTaskExecutionGraph$BuildOperationAwareExecutionAction.execute(DefaultTaskExecutionGraph.java:303)
+	at org.gradle.execution.plan.DefaultPlanExecutor$ExecutorWorker.execute(DefaultPlanExecutor.java:459)
+	at org.gradle.execution.plan.DefaultPlanExecutor$ExecutorWorker.run(DefaultPlanExecutor.java:376)
+	at org.gradle.internal.concurrent.ExecutorPolicy$CatchAndRecordFailures.onExecute(ExecutorPolicy.java:64)
+	at org.gradle.internal.concurrent.AbstractManagedExecutor$1.run(AbstractManagedExecutor.java:48)
 
 
-BUILD FAILED in 2m 4s
-22 actionable tasks: 21 executed, 1 from cache
+BUILD FAILED in 1m 40s
+24 actionable tasks: 23 executed, 1 from cache
