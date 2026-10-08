@@ -41,7 +41,9 @@ jobs:
 
       - name: Юнит-тесты домена
         working-directory: android
-        run: gradle :app:testDebugUnitTest --no-daemon --stacktrace
+        run: |
+          set -o pipefail
+          gradle :app:testDebugUnitTest --no-daemon --stacktrace 2>&1 | tee /tmp/test.log
 
       - name: Сборка APK
         id: apk
@@ -50,13 +52,22 @@ jobs:
           set -o pipefail
           gradle :app:assembleDebug --no-daemon --stacktrace 2>&1 | tee /tmp/build.log
 
-      - name: Лог сборки при падении
+      # Логи Actions из песочницы не скачать, а ошибки компиляции нужны — кладём их в коммит.
+      - name: Отдать лог сборки в репозиторий
         if: failure()
-        uses: actions/upload-artifact@v4
-        with:
-          name: workday-build-log
-          path: /tmp/build.log
-          if-no-files-found: ignore
+        run: |
+          {
+            echo "## Что упало"
+            grep -hE "What went wrong|^e: |error:|FAILURE:|Caused by:|Unresolved reference|expected:" /tmp/test.log /tmp/build.log 2>/dev/null | head -120
+            echo; echo "## Хвост лога"
+            tail -n 60 /tmp/build.log 2>/dev/null || tail -n 60 /tmp/test.log
+          } > ci-build.log
+          head -c 200 ci-build.log
+          git config user.name "workday-ci"
+          git config user.email "workday-ci@users.noreply.github.com"
+          git add -f ci-build.log
+          git commit -q -m "ci: лог сборки [skip ci]" || echo "нечего пушить"
+          git push -q origin HEAD:${{ github.ref_name }} || echo "пуш лога не удался"
 
       - name: Проверить APK
         if: steps.apk.outcome == 'success'
