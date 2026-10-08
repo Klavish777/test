@@ -101,18 +101,23 @@ jobs:
           fi
           gh release upload workday-latest WorkDay-debug.apk --clobber
 
-          PKG=$(grep -oE "name='[^']+'" /tmp/badging.txt | head -1 | tr -d "\047" | cut -d' ' -f2)
-          SDK=$(grep -oE "^sdkVersion:'[^']+'" /tmp/badging.txt | tr -d "\047" | awk '{print $2}')
-          LABEL=$(grep -oE "^application-label:'[^']+'" /tmp/badging.txt | tr -d "\047" | awk '{print $2}')
-          DEX=$(unzip -l WorkDay-debug.apk | grep -c "\.dex")
+          B=/tmp/badging.txt
+          PKG=$(sed -nE "s/^package: name='([^']+)'.*/\1/p" $B | head -1)
+          VER=$(sed -nE "s/.*versionName='([^']+)'.*/\1/p" $B | head -1)
+          SDK=$(sed -nE "s/^sdkVersion:'([0-9]+)'.*/\1/p" $B | head -1)
+          TGT=$(sed -nE "s/^targetSdkVersion:'([0-9]+)'.*/\1/p" $B | head -1)
+          LABEL=$(sed -nE "s/^application-label:'(.*)'.*/\1/p" $B | head -1)
+          LAUNCH=$(sed -nE "s/^launchable-activity: name='([^']+)'.*/\1/p" $B | head -1)
+          DEX=$(unzip -l WorkDay-debug.apk | grep -c '\.dex')
           SIZE=$(stat -c%s WorkDay-debug.apk)
           {
             echo "Debug-сборка ветки \`${{ github.ref_name }}\` — пересобирается CI при каждом пуше в \`android/\`."
             echo
             echo "| Проверено | Значение |"
             echo "|---|---|"
-            echo "| Пакет | \`$PKG\` |"
-            echo "| Android | $LABEL, min SDK $SDK (Android 8.0+) |"
+            echo "| Пакет / запуск | \`$PKG\` → \`$LAUNCH\` |"
+            echo "| Название / версия | $LABEL $VER |"
+            echo "| Android | min SDK $SDK, target $TGT |"
             echo "| dex-файлов | $DEX |"
             echo "| размер | $SIZE байт |"
             echo "| Юнит-тесты домена | пройдены (\`:app:testDebugUnitTest\`) |"

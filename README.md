@@ -1,5 +1,8 @@
 # Work Day
 
+**Свежий debug-APK:** [WorkDay-debug.apk](https://github.com/Klavish777/test/releases/download/workday-latest/WorkDay-debug.apk)
+ · [страница релиза](https://github.com/Klavish777/test/releases/tag/workday-latest) (пересобирается CI при каждом пуше в `android/`)
+
 **Android-приложение с четырьмя AI-агентами, которые ведут рабочий день твоего канала на YouTube и TikTok.**
 Не «кнопка накрутки», а смена: у каждого агента своё направление, свои KPI, свои плейбуки и вечерний отчёт.
 
@@ -51,6 +54,13 @@ Work Day **не накручивает** аудиторию и не публик
   TikTok Studio (`data/platform/AnalyticsImporter.kt`). Пока импорт не сделан, график живёт на
   детерминированных демо-данных и честно это подписывает.
 
+## Сборка в один клик
+
+`.github/workflows/workday-apk.yml` на GitHub Actions: JDK 17 → Android SDK 35 → Gradle 8.11.1 →
+`:app:testDebugUnitTest` → `:app:assembleDebug` → APK в релиз `workday-latest` (постоянная ссылка на загрузку)
+и артефактом. При ошибке компиляции workflow коммитит `ci-build.log` с текстом ошибок в ветку — его видно
+в истории, не залезая в логи Actions.
+
 ## Структура репозитория
 
 ```
@@ -92,8 +102,7 @@ cd android && ./gradlew :app:assembleDebug :app:testDebugUnitTest
 
 ## Статус кода
 
-Исходники Android-проекта написаны под Kotlin 2.0.21 + Compose BOM 2024.10.01, но **в этой песочнице
-нет JDK и Android SDK, поэтому `assembleDebug` здесь не запускался** — первую сборку прогони в
-Android Studio (см. `docs/BUILD.md`, там же список мест, которые обычно требуют правок после импорта).
-Логика смены, планирования и риск-модели проверена тестами на портативном прототипе
-(`preview/engine.test.js`), куда перенесена 1:1 из домена.
+Собирается и проходит тесты в CI (Kotlin 2.0.21, Compose BOM 2024.10.01, `:app:testDebugUnitTest` +
+`:app:assembleDebug` зелёные). Локально в песочнице сборку не проверить — там нет JDK и Android SDK,
+поэтому CI и есть способ получить бинарник. Если собираешь сам, список мест, которые обычно правят после
+импорта проекта в Android Studio, — в `docs/BUILD.md`.
