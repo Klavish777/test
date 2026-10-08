@@ -271,15 +271,20 @@ data class ResearchItem(
         /** ISO-8601 от YouTube («2026-10-01T08:00:00Z») в миллисекунды; без java.time на minSdk 26. */
         fun parseIsoEpoch(raw: String): Long? {
             if (raw.length < 19) return null
-            val digits = raw.replace("-", "").replace(":", "").take(14)
-            if (digits.length < 14 || !digits.all { it.isDigit() }) return null
-            val y = digits.substring(0, 4).toInt()
-            val mo = digits.substring(4, 6).toInt()
-            val d = digits.substring(6, 8).toInt()
-            val h = digits.substring(8, 10).toInt()
-            val mi = digits.substring(10, 12).toInt()
-            val s = digits.substring(12, 14).toInt()
-            return epochDays(y, mo, d) * 86_400_000L + h * 3_600_000L + mi * 60_000L + s * 1_000L
+            // «2026-10-01T08:00:00Z»: дату и время берём по позициям — между ними
+            // обязательный «T», а суффикс зоны («Z»/«+03:00») нам не нужен: смещение
+            // YouTube отдаёт уже учтённым в самих часах.
+            val date = raw.substring(0, 10).filter { it.isDigit() }
+            val time = raw.substring(11, 19).filter { it.isDigit() }
+            if (date.length != 8 || time.length != 6) return null
+            val y = date.substring(0, 4).toInt()
+            val mo = date.substring(4, 6).toInt()
+            val d = date.substring(6, 8).toInt()
+            if (mo !in 1..12 || d !in 1..31) return null
+            val h = time.substring(0, 2).toInt()
+            val mi = time.substring(2, 4).toInt()
+            val sec = time.substring(4, 6).toInt()
+            return epochDays(y, mo, d) * 86_400_000L + h * 3_600_000L + mi * 60_000L + sec * 1_000L
         }
 
         /** Дней от 1970-01-01 по григорианскому календарю (алгоритм Howard Hinnant). */
