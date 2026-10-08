@@ -134,7 +134,10 @@ class ViralLabTest {
         val full = ViralLab.buildBeats(t)
         val assetsFull = ViralLab.assetsFor(t, full)
         val beforeFull = ViralLab.critique(full, t, assetsFull)
-        val ((beatsFull, assetsAfter), editsFull) = ViralLab.editPass(full, t, assetsFull)
+        val passFull = ViralLab.editPass(full, t, assetsFull)
+        val beatsFull = passFull.first.first
+        val assetsAfter = passFull.first.second
+        val editsFull = passFull.second
         val afterFull = ViralLab.critique(beatsFull, t, assetsAfter)
         assertTrue("полный скелет: ${beforeFull.total} → ${afterFull.total}", afterFull.total >= beforeFull.total)
         assertEquals("правки не ломают тайминги", t.durationSec, beatsFull.sumOf { it.lengthSec })
@@ -148,7 +151,10 @@ class ViralLabTest {
             Beat(index = 0, startSec = 0, endSec = 40, role = BeatRole.PAYLOAD, voice = "долгий рассказ без монтажа", screen = "один план"),
         )
         val beforeWeak = ViralLab.critique(weak, t, emptyList())
-        val ((beatsWeak, assetsWeak), editsWeak) = ViralLab.editPass(weak, t, emptyList())
+        val passWeak = ViralLab.editPass(weak, t, emptyList())
+        val beatsWeak = passWeak.first.first
+        val assetsWeak = passWeak.first.second
+        val editsWeak = passWeak.second
         val afterWeak = ViralLab.critique(beatsWeak, t, assetsWeak)
         assertTrue("слабый скелет обязан расти: ${beforeWeak.total} → ${afterWeak.total}", afterWeak.total > beforeWeak.total)
         assertTrue("монтажёр не должен молчать", editsWeak.isNotEmpty())
@@ -212,7 +218,7 @@ class ViralLabTest {
     }
 
     @Test
-    fun `разбор ответов youtube: длительность, дата и скорость`() {
+    fun `разбор ответов youtube — длительность, дата и скорость`() {
         assertEquals(3723, ResearchItem.parseDuration("PT1H2M3S"))
         assertEquals(37, ResearchItem.parseDuration("PT37S"))
         assertEquals(240, ResearchItem.parseDuration("PT4M"))
@@ -262,7 +268,7 @@ class ViralLabTest {
     }
 
     @Test
-    fun `кэш статистики протухает, а не вечно врал`() {
+    fun `кэш статистики нишы протухает`() {
         val item = ResearchItem(videoId = "v", title = "x", views = 10L, durationSec = 30)
         val fresh = GenerationState(research = listOf(item), researchAt = System.currentTimeMillis())
         assertTrue(fresh.researchFresh)
