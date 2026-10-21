@@ -88,14 +88,14 @@ jobs:
           if (!(Test-Path "dist/SmartphoneRepairOS/SmartphoneRepairOS.exe")) { throw "EXE не создан" }
           Get-ChildItem installer/Output -ErrorAction SilentlyContinue | Format-Table Name, Length
 
-      - name: Артефакт: портативная сборка
+      - name: "Артефакт: портативная сборка"
         uses: actions/upload-artifact@v4
         with:
           name: SmartphoneRepairOS-portable
           path: dist/SmartphoneRepairOS/**
           if-no-files-found: error
 
-      - name: Артефакт: установщик
+      - name: "Артефакт: установщик"
         uses: actions/upload-artifact@v4
         with:
           name: SmartphoneRepairOS-installer
