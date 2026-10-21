@@ -1,0 +1,27 @@
+Copyright (c) 2026 Smartphone Repair OS. All rights reserved.
+
+PROPRIETARY / ЗАКРЫТАЯ ЛИЦЕНЗИЯ
+
+Исходный код и приложение Smartphone Repair OS предоставляются для использования
+владельцем проекта и его заказчиком. Публикация, распространение, сублицензирование
+и коммерческое использование третьими лицами без письменного разрешения правообладателя
+не допускаются.
+
+Приложение НЕ содержит и НЕ распространяет:
+  * прошивки, программное обеспечение и образы устройств;
+  * сервисные схемы, BoardView и техническую документацию производителей;
+  * 3D-модели и фотографии реальных плат.
+
+Демонстрационные данные (флаг is_demo = 1) созданы для проверки работоспособности
+интерфейса и не являются технической информацией о реальных изделиях.
+
+Пользователь самостоятельно несёт ответственность за:
+  * правомерность загрузки и использования сторонних материалов;
+  * соблюдение лицензий и авторских прав производителей;
+  * законность любых операций с устройствами (включая гарантийные и правовые аспекты).
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED,
+INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR
+PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS BE LIABLE FOR ANY CLAIM,
+DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
+FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
