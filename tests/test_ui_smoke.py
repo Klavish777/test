@@ -151,3 +151,41 @@ def test_i18n_catalog(app):
     assert tr("nav.home") == "Home"
     set_language(current_language() if current_language() == "ru" else "ru")
     assert tr("nav.home") == "Главная"
+
+
+def test_table_columns_fit_without_truncation(app, window):
+    """Столбцы подгоняются по содержимому, лишние скрываются по приоритету.
+
+    Регрессия: раньше QHeaderView.Stretch делил ширину поровну и в колонке
+    «Модель» оставалось несколько букв, а правые колонки уезжали за экран.
+    """
+    from repair_os.ui.widgets import FittedTableView
+
+    window.resize(1440, 900)
+    window.navigate("catalog")
+    app.processEvents()
+    table = window.pages["catalog"].table
+    assert isinstance(table, FittedTableView)
+    model = table.model()
+    visible = [i for i in range(model.columnCount()) if not table.isColumnHidden(i)]
+    assert len(visible) >= 5, "должны остаться основные колонки"
+    assert visible[0] == 0 and visible[1] == 1, "бренд и модель всегда видны"
+    total = sum(table.columnWidth(i) for i in visible)
+    assert total <= table.viewport().width() + 8, (total, table.viewport().width())
+    # Колонка «Модель» должна быть достаточно широкой для читаемого текста.
+    assert table.columnWidth(1) >= 150, table.columnWidth(1)
+
+
+def test_table_hides_low_priority_columns_when_narrow(app, window):
+    """При сильном сужении таблица скрывает второстепенные колонки, а не режет текст."""
+    window.navigate("catalog")
+    app.processEvents()
+    table = window.pages["catalog"].table
+    wide_hidden = len(table.hidden_columns())
+    window.resize(1000, 800)
+    app.processEvents()
+    table.resize(520, table.height())
+    app.processEvents()
+    narrow_hidden = len(table.hidden_columns())
+    assert narrow_hidden >= wide_hidden
+    assert table.isColumnHidden(1) is False
