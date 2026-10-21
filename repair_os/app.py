@@ -21,7 +21,7 @@ from repair_os.core.i18n import set_language
 from repair_os.core.logging_setup import install_exception_hook, setup_logging
 from repair_os.core.paths import build_paths
 from repair_os.services.context import AppContext
-from repair_os.version import APP_NAME, APP_VERSION
+from repair_os.version import APP_NAME, APP_VERSION, SCHEMA_VERSION_EXPECTED
 
 log = logging.getLogger(__name__)
 
@@ -54,8 +54,12 @@ def run_check(context: AppContext) -> int:
     ok = context.db.integrity_check()
     print("Каталог данных:", context.paths.root)
     print("База:", context.paths.database)
-    print("Схема:", context.db.schema_version())
+    schema = context.db.schema_version()
+    schema_ok = schema == SCHEMA_VERSION_EXPECTED
+    print("Схема:", schema, "(ожидалась %d)" % SCHEMA_VERSION_EXPECTED)
     print("Целостность:", "ok" if ok else "FAILED")
+    if not schema_ok:
+        print("ВНИМАНИЕ: версия схемы не совпадает с ожидаемой приложением")
     for table in (
         "brands",
         "devices",
@@ -72,7 +76,7 @@ def run_check(context: AppContext) -> int:
         "app_settings",
     ):
         print(f"  {table}: {context.db.table_count(table)}")
-    return 0 if ok else 1
+    return 0 if ok and schema_ok else 1
 
 
 def main(argv: list[str] | None = None) -> int:

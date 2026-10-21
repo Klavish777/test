@@ -2,7 +2,9 @@
 __pycache__/
 *.py[cod]
 *.egg-info/
-build/
+build/*
+!/build/*.spec
+!/build/*.iss
 dist/
 .venv/
 venv/
@@ -18,13 +20,13 @@ release/
 installer/Output/
 
 # Локальные данные приложения и артефакты ручной проверки
-data/
-logs/
+/data/
+/logs/
 *.sqlite3
 *.sqlite3-wal
 *.sqlite3-shm
-screenshots/
 *.png
+!docs/screenshots/
 !docs/screenshots/*.png
 
 # ОС
