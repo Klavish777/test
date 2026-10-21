@@ -11,11 +11,9 @@ from PySide6.QtWidgets import (
     QAbstractItemView,
     QComboBox,
     QHBoxLayout,
-    QHeaderView,
     QLabel,
     QPushButton,
     QSplitter,
-    QTableView,
     QVBoxLayout,
     QWidget,
 )
@@ -33,6 +31,7 @@ from repair_os.ui.widgets import (
     Card,
     breakable,
     wrapped_label,
+    FittedTableView,
     SearchInput,
     StatusBadge,
     badge,
@@ -136,7 +135,7 @@ class LibraryPage(QWidget):
         self.model = DocumentTableModel(self)
         self.proxy = SearchProxy(self)
         self.proxy.setSourceModel(self.model)
-        self.table = QTableView(self)
+        self.table = FittedTableView(self)
         self.table.setModel(self.proxy)
         self.table.setSortingEnabled(True)
         self.table.setAlternatingRowColors(True)
@@ -144,16 +143,13 @@ class LibraryPage(QWidget):
         self.table.setSelectionMode(QAbstractItemView.SingleSelection)
         self.table.setEditTriggers(QAbstractItemView.NoEditTriggers)
         self.table.verticalHeader().setVisible(False)
-        self.table.horizontalHeader().setStretchLastSection(True)
         self.table.selectionModel().selectionChanged.connect(self._on_selection)
         self.table.doubleClicked.connect(lambda _index: self._open_file())
-        header = self.table.horizontalHeader()
-        header.setSectionResizeMode(0, QHeaderView.Stretch)
-        for column in (1, 2, 5, 6):
-            header.setSectionResizeMode(column, QHeaderView.ResizeToContents)
-        for column, width in ((3, 160), (4, 140)):
-            header.setSectionResizeMode(column, QHeaderView.Interactive)
-            self.table.setColumnWidth(column, width)
+        self.table.setup_columns(
+            0,
+            minimum_widths={0: 200, 1: 124, 2: 100, 3: 140, 4: 120, 5: 120, 6: 96},
+            priorities={6: 1, 4: 2, 2: 3, 1: 4, 5: 5},
+        )
         return self.table
 
     def _build_detail(self) -> QWidget:

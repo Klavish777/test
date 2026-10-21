@@ -12,7 +12,6 @@ from PySide6.QtWidgets import (
     QComboBox,
     QFrame,
     QHBoxLayout,
-    QHeaderView,
     QLabel,
     QListWidget,
     QListWidgetItem,
@@ -20,7 +19,6 @@ from PySide6.QtWidgets import (
     QPushButton,
     QScrollArea,
     QStackedWidget,
-    QTableView,
     QToolButton,
     QVBoxLayout,
     QWidget,
@@ -35,6 +33,7 @@ from repair_os.ui.widgets import (
     ClickableCard,
     EmptyState,
     FlowLayout,
+    FittedTableView,
     SearchInput,
     badge,
     clear_layout,
@@ -178,7 +177,7 @@ class CatalogPage(QWidget):
         self.model = DeviceTableModel(self)
         self.proxy = SearchProxy(self)
         self.proxy.setSourceModel(self.model)
-        self.table = QTableView(self)
+        self.table = FittedTableView(self)
         self.table.setModel(self.proxy)
         self.table.setSortingEnabled(True)
         self.table.setAlternatingRowColors(True)
@@ -186,19 +185,15 @@ class CatalogPage(QWidget):
         self.table.setSelectionMode(QAbstractItemView.ExtendedSelection)
         self.table.setEditTriggers(QAbstractItemView.NoEditTriggers)
         self.table.verticalHeader().setVisible(False)
-        self.table.horizontalHeader().setStretchLastSection(True)
-        self.table.horizontalHeader().setSectionResizeMode(QHeaderView.Interactive)
         self.table.doubleClicked.connect(lambda _index: self._open_selected())
         self.table.selectionModel().selectionChanged.connect(self._on_selection)
         self.table.setContextMenuPolicy(Qt.CustomContextMenu)
         self.table.customContextMenuRequested.connect(self._context_menu)
-        header = self.table.horizontalHeader()
-        header.setSectionResizeMode(1, QHeaderView.Stretch)
-        for column in (0, 2, 3, 4):
-            header.setSectionResizeMode(column, QHeaderView.ResizeToContents)
-        for column, width in ((5, 150), (6, 110), (7, 70), (8, 50), (9, 80)):
-            header.setSectionResizeMode(column, QHeaderView.Interactive)
-            self.table.setColumnWidth(column, width)
+        self.table.setup_columns(
+            1,
+            minimum_widths={0: 96, 1: 180, 2: 120, 3: 108, 4: 84, 5: 130, 6: 96, 7: 74, 8: 52, 9: 84},
+            priorities={3: 1, 9: 2, 4: 3, 0: 4, 6: 5, 5: 6, 7: 7, 8: 8},
+        )
         return self.table
 
     def _build_cards(self) -> QWidget:

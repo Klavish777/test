@@ -8,12 +8,14 @@ from PySide6.QtCore import QPoint, QRect, QSize, Qt, Signal
 from PySide6.QtGui import QColor, QFont, QMouseEvent, QPainter, QPen
 from PySide6.QtWidgets import (
     QFrame,
+    QHeaderView,
     QHBoxLayout,
     QLabel,
     QLayout,
     QLineEdit,
     QPushButton,
     QSizePolicy,
+    QTableView,
     QVBoxLayout,
     QWidget,
     QWidgetItem,
@@ -403,3 +405,119 @@ __all__ = [
     "tags_widget",
     "human_size",
 ]
+
+
+class FittedTableView(QTableView):
+    """Таблица с подгонкой ширины столбцов под доступное место.
+
+    Штатный QHeaderView::Stretch делит ширину поровну и обрезает содержимое
+    (например, в колонке «Модель» остаётся пара букв). Здесь ширины считаются
+    от содержимого и пропорционально сжимаются, если места не хватает;
+    растягиваемая колонка сначала получает минимум, а остаток ширины распределяется
+    между колонками, у которых есть скрытый текст.
+    """
+
+    def __init__(self, parent: QWidget | None = None) -> None:
+        super().__init__(parent)
+        self._stretch_column: int | None = None
+        self._minimum_widths: dict[int, int] = {}
+        self._minimised = False
+        self._applying = False
+        header = self.horizontalHeader()
+        header.setMinimumSectionSize(48)
+        header.setSectionResizeMode(QHeaderView.Interactive)
+        header.setStretchLastSection(False)
+        header.sectionResized.connect(self._on_section_resized)
+
+    # ------------------------------------------------------------------ API
+    def setup_columns(
+        self,
+        stretch_column: int | None = None,
+        *,
+        minimum_widths: dict[int, int] | None = None,
+        priorities: dict[int, int] | None = None,
+    ) -> None:
+        """Задать растягиваемую колонку, минимальные ширины и приоритеты скрытия.
+
+        ``priorities``: чем меньше число, тем раньше колонка скрывается при
+        нехватке места. Колонки без приоритета не скрываются.
+        """
+        self._stretch_column = stretch_column
+        self._minimum_widths = dict(minimum_widths or {})
+        self._priorities = dict(priorities or {})
+        self.apply_column_fit()
+
+    def apply_column_fit(self) -> None:
+        model = self.model()
+        if model is None:
+            return
+        count = model.columnCount()
+        available = self.viewport().width()
+        if count == 0 or available <= 0:
+            return
+        minimums = {i: 48 for i in range(count)}
+        minimums.update({k: v for k, v in self._minimum_widths.items() if k < count})
+        hidden = self._fit_visible_columns(count, minimums, available)
+        visible = [i for i in range(count) if i not in hidden]
+        if not visible:
+            return
+        natural = [max(self.sizeHintForColumn(i) + 14, minimums[i]) for i in range(count)]
+        natural_total = sum(natural[i] for i in visible)
+        widths = [natural[i] if i in visible else 0 for i in range(count)]
+        if natural_total <= available:
+            if self._stretch_column is not None and self._stretch_column in visible:
+                widths[self._stretch_column] += available - natural_total
+        else:
+            flex_total = sum(max(0, natural[i] - minimums[i]) for i in visible)
+            overflow = natural_total - available
+            for i in visible:
+                flex = max(0, natural[i] - minimums[i])
+                share = (flex / flex_total) if flex_total else 0.0
+                widths[i] = max(minimums[i], natural[i] - int(round(overflow * share)))
+            deficit = sum(widths) - available
+            if deficit > 0:
+                order = sorted(visible, key=lambda i: widths[i] - minimums[i], reverse=True)
+                for i in order:
+                    if deficit <= 0:
+                        break
+                    take = min(deficit, widths[i] - minimums[i])
+                    widths[i] -= take
+                    deficit -= take
+        self._applying = True
+        try:
+            for index, value in enumerate(widths):
+                self.setColumnHidden(index, index not in visible)
+                if index in visible:
+                    self.setColumnWidth(index, value)
+        finally:
+            self._applying = False
+
+    def hidden_columns(self) -> list[int]:
+        return [i for i in range(self.model().columnCount()) if self.isColumnHidden(i)]
+
+    def _fit_visible_columns(self, count: int, minimums: dict[int, int], available: int) -> set[int]:
+        """Скрывает наименее важные колонки, пока минимальная ширина не влезет."""
+        priorities = getattr(self, "_priorities", {})
+        hideable = sorted(
+            (priority, index) for index, priority in priorities.items() if index < count
+        )
+        hidden: set[int] = set()
+        total = sum(minimums[i] for i in range(count))
+        for _priority, index in hideable:
+            if total <= available:
+                break
+            hidden.add(index)
+            total -= minimums[index]
+        return hidden
+
+    # ------------------------------------------------------------------ события
+    def resizeEvent(self, event) -> None:  # noqa: N802 - Qt API
+        super().resizeEvent(event)
+        if not getattr(self, "_applying", False):
+            self.apply_column_fit()
+
+    def _on_section_resized(self, index: int, _old: int, _new: int) -> None:
+        if getattr(self, "_applying", False) or self._minimised:
+            return
+        # Пользователь потянул границу — дальше ширины не пересчитываем.
+        self._minimised = True

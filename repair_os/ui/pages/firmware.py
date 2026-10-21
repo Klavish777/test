@@ -12,11 +12,9 @@ from PySide6.QtWidgets import (
     QComboBox,
     QFileDialog,
     QHBoxLayout,
-    QHeaderView,
     QLabel,
     QPushButton,
     QSplitter,
-    QTableView,
     QVBoxLayout,
     QWidget,
 )
@@ -36,6 +34,7 @@ from repair_os.ui.widgets import (
     breakable,
     wrapped_label,
     ClickableCard,
+    FittedTableView,
     SearchInput,
     StatusBadge,
     badge,
@@ -138,7 +137,7 @@ class FirmwarePage(QWidget):
         self.model = FirmwareTableModel(self)
         self.proxy = SearchProxy(self)
         self.proxy.setSourceModel(self.model)
-        self.table = QTableView(self)
+        self.table = FittedTableView(self)
         self.table.setModel(self.proxy)
         self.table.setSortingEnabled(True)
         self.table.setAlternatingRowColors(True)
@@ -146,18 +145,13 @@ class FirmwarePage(QWidget):
         self.table.setSelectionMode(QAbstractItemView.SingleSelection)
         self.table.setEditTriggers(QAbstractItemView.NoEditTriggers)
         self.table.verticalHeader().setVisible(False)
-        self.table.horizontalHeader().setStretchLastSection(True)
-        self.table.horizontalHeader().setSectionResizeMode(QHeaderView.Interactive)
         self.table.selectionModel().selectionChanged.connect(self._on_selection)
         self.table.doubleClicked.connect(lambda _index: self._edit_selected())
-        header = self.table.horizontalHeader()
-        header.setSectionResizeMode(0, QHeaderView.Interactive)
-        self.table.setColumnWidth(0, 250)
-        for column in (1, 2, 5, 6, 7, 9):
-            header.setSectionResizeMode(column, QHeaderView.ResizeToContents)
-        for column, width in ((3, 110), (4, 130), (8, 110)):
-            header.setSectionResizeMode(column, QHeaderView.Interactive)
-            self.table.setColumnWidth(column, width)
+        self.table.setup_columns(
+            0,
+            minimum_widths={0: 190, 1: 82, 2: 96, 3: 104, 4: 120, 5: 80, 6: 92, 7: 78, 8: 96, 9: 108},
+            priorities={8: 1, 7: 2, 1: 3, 5: 4, 6: 5, 3: 6, 9: 7},
+        )
         return self.table
 
     def _build_detail(self) -> QWidget:
