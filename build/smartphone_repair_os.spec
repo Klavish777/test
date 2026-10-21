@@ -11,8 +11,14 @@ from pathlib import Path
 
 from PyInstaller.utils.hooks import collect_submodules
 
-ROOT = Path(SPECPATH).resolve().parent  # noqa: F821 - переменные PyInstaller
-PROJECT_ROOT = ROOT.parent
+# ВАЖНО: SPECPATH в PyInstaller — это каталог со spec-файлом, а не сам файл.
+# Раньше корень проекта вычислялся на уровень выше (/home/user вместо /home/user/test),
+# из-за чего сборка падала с "script '.../main.py' not found".
+_SPEC_DIR = Path(SPECPATH).resolve()  # noqa: F821 - переменная PyInstaller
+if _SPEC_DIR.is_file():
+    _SPEC_DIR = _SPEC_DIR.parent
+PROJECT_ROOT = _SPEC_DIR.parent if (_SPEC_DIR.parent / "main.py").is_file() else _SPEC_DIR
+ROOT = PROJECT_ROOT
 
 datas = [
     (str(PROJECT_ROOT / "repair_os" / "data" / "migrations"), "repair_os/data/migrations"),

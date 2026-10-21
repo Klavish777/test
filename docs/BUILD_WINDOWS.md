@@ -84,7 +84,18 @@ signtool sign /f cert.pfx /p <пароль> /tr http://timestamp.digicert.com /t
 
 `cert.pfx` и пароль **не храните в репозитории**; используйте секреты CI.
 
-## 6. Типовые проблемы
+## 6. Публикация релиза
+
+```powershell
+git tag v0.1.0
+git push origin v0.1.0
+```
+
+Workflow `CI · тесты и сборка Windows` на теге `v*` соберёт EXE, установщик и
+портативный ZIP и приложит их к GitHub Release. Логи каждого шага сборки лежат
+в `build\logs` и выгружаются артефактом `build-logs` даже при ошибке.
+
+## 7. Типовые проблемы
 
 | Симптом | Решение |
 |---|---|
@@ -94,3 +105,6 @@ signtool sign /f cert.pfx /p <пароль> /tr http://timestamp.digicert.com /t
 | Антивирус блокирует EXE PyInstaller | подпишите код или добавьте в исключения для теста |
 | Приложение не запускается, окно пустое | запустите `SmartphoneRepairOS.exe --check` из консоли, посмотрите `logs\repair_os.log` |
 | Сборка падает на тестах UI | проверьте, что `QT_QPA_PLATFORM=offscreen` не конфликтует с локальными настройками Qt |
+| `script '...\main.py' not found` | в `build/smartphone_repair_os.spec` корень проекта должен вычисляться от **каталога** spec-файла: `SPECPATH` — это каталог, а не файл |
+| `UnicodeEncodeError: 'charmap' codec ...` | Windows использует cp1252 для перенаправленного вывода; скрипт сборки выставляет `PYTHONUTF8=1`, а приложение — `configure_console()` |
+| Нужно понять, почему упал CI | скачайте артефакт `build-logs` (файлы `build/logs/*.log`): там полный вывод pip, pytest, PyInstaller, ISCC и дымового запуска EXE |
