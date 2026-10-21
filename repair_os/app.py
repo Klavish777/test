@@ -13,6 +13,7 @@
 from __future__ import annotations
 
 import argparse
+import io
 import logging
 import sys
 from pathlib import Path
@@ -24,6 +25,40 @@ from repair_os.services.context import AppContext
 from repair_os.version import APP_NAME, APP_VERSION, SCHEMA_VERSION_EXPECTED
 
 log = logging.getLogger(__name__)
+
+
+class _LogStream(io.TextIOBase):
+    """Поток вывода, который пишет в лог приложения.
+
+    Нужен для сборки без консоли (PyInstaller console=False): sys.stdout там None,
+    и обычный print() приводит к AttributeError.
+    """
+
+    def write(self, text: str) -> int:  # noqa: D102 - file-like API
+        message = text.rstrip("\n")
+        if message:
+            log.info("%s", message)
+        return len(text)
+
+    def flush(self) -> None:  # noqa: D102 - file-like API
+        return None
+
+
+def configure_console() -> None:
+    """UTF-8 в stdout/stderr и подмена отсутствующих потоков.
+
+    Windows при перенаправлении вывода в пайп использует cp1252 — кириллица в
+    сообщениях (`--check`, `--screenshot`) падает с UnicodeEncodeError.
+    """
+    for name in ("stdout", "stderr"):
+        stream = getattr(sys, name, None)
+        if stream is None:
+            setattr(sys, name, _LogStream())
+            continue
+        try:
+            stream.reconfigure(encoding="utf-8", errors="replace")  # type: ignore[attr-defined]
+        except (AttributeError, ValueError, OSError):
+            log.debug("Не удалось переключить %s на UTF-8", name)
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -80,8 +115,16 @@ def run_check(context: AppContext) -> int:
 
 
 def main(argv: list[str] | None = None) -> int:
+    configure_console()
     parser = build_parser()
     args = parser.parse_args(argv)
+
+    context = create_context(args)
+
+    # --check работает без графической подсистемы: это позволяет проверять базу
+    # в CI, на сервере и в собранном EXE без экрана.
+    if args.check:
+        return run_check(context)
 
     from PySide6.QtWidgets import QApplication
 
@@ -93,11 +136,6 @@ def main(argv: list[str] | None = None) -> int:
     app.setApplicationVersion(APP_VERSION)
     app.setOrganizationName("Smartphone Repair OS")
     apply_theme(app)
-
-    context = create_context(args)
-
-    if args.check:
-        return run_check(context)
 
     window = MainWindow(context)
     saved_geometry = context.settings.get("window_geometry")

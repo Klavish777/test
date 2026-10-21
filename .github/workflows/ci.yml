@@ -10,6 +10,12 @@ on:
 permissions:
   contents: write
 
+env:
+  # Windows использует cp1252 для перенаправленного вывода — кириллица в логах
+  # Python падает с UnicodeEncodeError без принудительного UTF-8.
+  PYTHONUTF8: "1"
+  PYTHONIOENCODING: "utf-8"
+
 jobs:
   tests:
     name: Тесты (Ubuntu, offscreen Qt)
@@ -77,16 +83,35 @@ jobs:
           QT_QPA_PLATFORM: offscreen
         run: python -m pytest tests -q
 
+      - name: Версия сборки
+        id: ver
+        shell: pwsh
+        run: |
+          $version = python -c "from repair_os import version; print(version.APP_VERSION)"
+          if ($env:GITHUB_REF -like "refs/tags/v*") { $version = $env:GITHUB_REF_NAME }
+          "version=$version" | Out-File -FilePath $env:GITHUB_OUTPUT -Append -Encoding utf8
+          Write-Host "Версия сборки: $version"
+
       - name: Сборка EXE и установщика
         shell: pwsh
         run: |
-          ./scripts/build_windows.ps1 -Version "${{ github.ref_name }}" -SkipTests
+          ./scripts/build_windows.ps1 -Version "${{ steps.ver.outputs.version }}" -SkipTests -RequireInstaller
+
+      - name: "Артефакт: журналы сборки"
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: build-logs
+          path: build/logs/*.log
+          if-no-files-found: warn
 
       - name: Проверка артефактов
         shell: pwsh
         run: |
           if (!(Test-Path "dist/SmartphoneRepairOS/SmartphoneRepairOS.exe")) { throw "EXE не создан" }
-          Get-ChildItem installer/Output -ErrorAction SilentlyContinue | Format-Table Name, Length
+          $installer = Get-ChildItem "installer/Output/*setup.exe" -ErrorAction SilentlyContinue
+          if (-not $installer) { throw "Установщик не создан" }
+          Get-ChildItem installer/Output | Format-Table Name, Length
 
       - name: "Артефакт: портативная сборка"
         uses: actions/upload-artifact@v4
@@ -95,11 +120,13 @@ jobs:
           path: dist/SmartphoneRepairOS/**
           if-no-files-found: error
 
-      - name: "Артефакт: установщик"
+      - name: "Артефакт: установщик и портативная сборка"
         uses: actions/upload-artifact@v4
         with:
           name: SmartphoneRepairOS-installer
-          path: installer/Output/*.exe
+          path: |
+            installer/Output/*.exe
+            installer/Output/*.zip
           if-no-files-found: error
 
       - name: Публикация в Release (для тегов v*)
@@ -111,6 +138,7 @@ jobs:
           generate_release_notes: true
           files: |
             installer/Output/*.exe
+            installer/Output/*.zip
           body: |
             Установщик Windows 10/11 (x64). MVP-версия.
 
