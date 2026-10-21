@@ -1,0 +1,34 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+build/*
+!/build/*.spec
+!/build/*.iss
+dist/
+.venv/
+venv/
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+coverage.xml
+htmlcov/
+
+# PyInstaller
+*.spec.bak
+release/
+installer/Output/
+
+# Локальные данные приложения и артефакты ручной проверки
+/data/
+/logs/
+*.sqlite3
+*.sqlite3-wal
+*.sqlite3-shm
+*.png
+!docs/screenshots/
+!docs/screenshots/*.png
+
+# ОС
+Thumbs.db
+.DS_Store

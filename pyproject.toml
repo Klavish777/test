@@ -1,0 +1,51 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "smartphone-repair-os"
+version = "0.1.0"
+description = "Smartphone Repair OS — локальная платформа для мастеров по ремонту смартфонов"
+readme = "README.md"
+requires-python = ">=3.10"
+license = { text = "Proprietary" }
+authors = [{ name = "Smartphone Repair OS" }]
+keywords = ["repair", "smartphone", "boardview", "firmware", "pyside6"]
+dependencies = ["PySide6==6.7.3"]
+
+[project.optional-dependencies]
+crypto = ["cryptography>=42.0"]
+dev = ["pytest>=8.0", "pytest-qt>=4.4", "pyinstaller>=6.6"]
+
+[project.scripts]
+smartphone-repair-os = "repair_os.app:main"
+
+[tool.setuptools]
+packages = [
+    "repair_os",
+    "repair_os.core",
+    "repair_os.data",
+    "repair_os.data.repositories",
+    "repair_os.services",
+    "repair_os.boardview",
+    "repair_os.seed",
+    "repair_os.ui",
+    "repair_os.ui.pages",
+    "repair_os.ui.dialogs",
+]
+
+[tool.setuptools.package-data]
+repair_os = [
+    "data/migrations/*.sql",
+    "resources/i18n/*.json",
+    "seed/assets/*",
+]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-ra"
+filterwarnings = ["ignore::DeprecationWarning"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py310"

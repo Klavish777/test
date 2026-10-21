@@ -1,0 +1,4 @@
+Бренд;Название;Код модели;Кодовое имя;Ревизия;Процессор;ОЗУ;Память;Версии ОС;Год;Проверено;Источник;Примечание
+Samsung;Galaxy A52;SM-A525F;a52q;rev1;Snapdragon 720G;6 GB;128 GB;Android 11, 12, 13;2021;0;https://example.org/device-db;ПРИМЕР: замените данными из проверенного источника
+Apple;iPhone 12;A2402;;;Apple A14 Bionic;4 GB;128 GB;iOS 14–17;2020;0;https://example.org/device-db;ПРИМЕР: регион уточняется вариантом устройства
+Xiaomi;Xiaomi 13;2211133G;fuxi;;Snapdragon 8 Gen 2;8 GB;256 GB;Android 13–15;2022;0;https://example.org/device-db;ПРИМЕР
