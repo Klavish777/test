@@ -143,16 +143,16 @@ public sealed class DriverCenterService
         }
 
         var escaped = filePath.Replace("'", "''");
-        var script = $"""
+        var script = $$"""
             $ErrorActionPreference = 'Stop';
-            $sig = Get-AuthenticodeSignature -FilePath '{escaped}';
-            [pscustomobject]@{{
+            $sig = Get-AuthenticodeSignature -FilePath '{{escaped}}';
+            [pscustomobject]@{
               Status = [string]$sig.Status;
               StatusMessage = [string]$sig.StatusMessage;
-              SignerSubject = if ($sig.SignerCertificate) {{ [string]$sig.SignerCertificate.Subject }} else {{ $null }};
-              Thumbprint = if ($sig.SignerCertificate) {{ [string]$sig.SignerCertificate.Thumbprint }} else {{ $null }};
-              Timestamp = if ($sig.TimeStamperCertificate) {{ [string]$sig.TimeStamperCertificate.Subject }} else {{ $null }}
-            }} | ConvertTo-Json -Compress
+              SignerSubject = if ($sig.SignerCertificate) { [string]$sig.SignerCertificate.Subject } else { $null };
+              Thumbprint = if ($sig.SignerCertificate) { [string]$sig.SignerCertificate.Thumbprint } else { $null };
+              Timestamp = if ($sig.TimeStamperCertificate) { [string]$sig.TimeStamperCertificate.Subject } else { $null }
+            } | ConvertTo-Json -Compress
             """;
 
         var powershell = Path.Combine(Environment.SystemDirectory, "WindowsPowerShell", "v1.0", "powershell.exe");
