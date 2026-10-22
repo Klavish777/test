@@ -130,6 +130,12 @@ public sealed class NexusDatabase
             note TEXT NULL
         );
 
+        CREATE TABLE IF NOT EXISTS publisher_key (
+            publisher TEXT PRIMARY KEY,
+            public_key_pem TEXT NOT NULL,
+            added_at TEXT NOT NULL
+        );
+
         CREATE TABLE IF NOT EXISTS firmware_import_history (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             firmware_id TEXT NOT NULL,

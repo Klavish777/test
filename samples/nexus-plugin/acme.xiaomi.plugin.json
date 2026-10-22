@@ -1,0 +1,30 @@
+{
+  "id": "com.acme.nexus.xiaomi",
+  "name": "ACME Xiaomi Module",
+  "version": "1.2.0",
+  "author": "ACME Service Tools",
+  "description": "Пример манифеста модуля производителя. Описывает только те возможности, которые реально реализованы в сборке.",
+  "assemblyFile": "Acme.Nexus.Xiaomi.dll",
+  "entryType": "Acme.Nexus.Xiaomi.XiaomiPlugin",
+  "sha256": "ЗАМЕНИТЕ_НА_SHA256_СБОРКИ",
+  "publisher": "ACME Service Tools",
+  "homepage": "https://example.invalid/acme",
+  "supportedBrands": ["Xiaomi", "Redmi", "POCO"],
+  "supportedPlatforms": ["Snapdragon", "MediaTek"],
+  "supportedModels": ["M2101K6G", "2201123G"],
+  "requiredDrivers": ["Qualcomm HS-USB QDLoader 9008"],
+  "operations": ["Список разделов", "Проверка целостности", "Анализ fastboot-переменных"],
+  "checks": ["Модель совпадает с манифестом", "Загрузчик разблокирован", "Хэш образа совпадает"],
+  "firmwareFormats": ["zip", "tar", "img"],
+  "requiredPermissions": ["read-device", "read-files"],
+  "limitations": ["Не выполняет запись в EDL", "Не обходит блокировку загрузчика"],
+  "limits": {
+    "maxFirmwareSizeBytes": 8589934592,
+    "canWriteDevice": false,
+    "requiresNetwork": false,
+    "allowedPartitions": ["boot", "vbmeta", "super"]
+  },
+  "requiresElevation": false,
+  "minimumHostVersion": "1.0.0",
+  "signature": null
+}

@@ -34,9 +34,13 @@ public sealed class PluginHost
 
     public IReadOnlyList<PluginValidationResult> LastRejected { get; private set; } = Array.Empty<PluginValidationResult>();
 
-    public PluginScanResult ScanAndLoad(string pluginsDirectory, IReadOnlyCollection<string> trustedPublishers, bool allowLoading)
+    public PluginScanResult ScanAndLoad(
+        string pluginsDirectory,
+        IReadOnlyCollection<string> trustedPublishers,
+        bool allowLoading,
+        Func<string, string?>? publisherKeyLookup = null)
     {
-        var policy = new PluginTrustPolicy(trustedPublishers, allowLoading);
+        var policy = new PluginTrustPolicy(trustedPublishers, allowLoading, publisherKeyLookup: publisherKeyLookup);
         var result = _loader.Scan(pluginsDirectory, policy);
         _external = result.Loaded;
         LastRejected = result.Rejected;

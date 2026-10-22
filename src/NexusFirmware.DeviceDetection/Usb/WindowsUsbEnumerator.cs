@@ -190,30 +190,67 @@ public sealed class WindowsUsbEnumerator
 
         if (mode == DeviceMode.QualcommEdl)
         {
-            warnings.Add("Устройство в режиме Qualcomm EDL (9008): запись возможна только официальным инструментом.");
+            warnings.Add("Устройство в режиме Qualcomm EDL (9008): запись возможна только официальным инструментом производителя.");
         }
-        else if (mode == DeviceMode.MediaTekBootrom)
+        else if (mode == DeviceMode.MediaTekPreloader || mode == DeviceMode.MediaTekBootrom)
         {
-            warnings.Add("Устройство в режиме MediaTek BROM/Preloader: работа с BROM не реализована.");
+            warnings.Add("Обнаружен интерфейс MediaTek: работа с Preloader/BROM в приложении не реализована.");
         }
         else if (mode == DeviceMode.Download)
         {
             warnings.Add("Устройство в режиме Samsung Download: используется официальный инструмент производителя.");
         }
 
+        var capabilities = new List<string> { "Диагностика USB-подключения" };
+        if (descriptor.Driver == DriverStatus.Ok)
+        {
+            capabilities.Add("Драйвер установлен");
+        }
+
         return new DeviceInfo
         {
-            Id = "usb:" + descriptor.InstanceId,
+            Id = "usb:" + descriptor.DeviceInstanceId,
             Transport = DeviceTransport.Usb,
             Mode = mode,
-            Connection = descriptor.Driver == DriverStatus.Problem ? ConnectionState.Unknown : ConnectionState.Connected,
-            Serial = null,
-            Manufacturer = descriptor.Manufacturer,
-            Model = descriptor.Name,
-            VendorId = $"{(descriptor.VendorId ?? 0):X4}",
-            ProductId = $"{(descriptor.ProductId ?? 0):X4}",
+            Connection = descriptor.Driver == DriverStatus.Problem ? ConnectionState.NoPermissions : ConnectionState.Connected,
+            Manufacturer = descriptor.Manufacturer ?? KnownUsbIdentifiers.VendorName(descriptor.VendorId),
+            Model = descriptor.FriendlyName ?? descriptor.Description,
+            VendorId = descriptor.VendorId?.ToString("X4"),
+            ProductId = descriptor.ProductId?.ToString("X4"),
+            UsbDevicePath = descriptor.DeviceInstanceId,
             Driver = descriptor.Driver,
-            ProblemCode = descriptor.ProblemCode,
-            Warnings = warnings
+            DriverName = descriptor.Service,
+            Warnings = warnings,
+            Capabilities = capabilities
         };
     }
+
+    /// <summary>Классификация USB-устройства по VID/PID и имени драйвера. Только наблюдаемые признаки.</summary>
+    public static DeviceMode ClassifyDevice(UsbDeviceDescriptor descriptor)
+    {
+        var name = (descriptor.FriendlyName ?? descriptor.Description ?? string.Empty).ToLowerInvariant();
+
+        if (descriptor.VendorId == KnownUsbIdentifiers.QualcommVendorId && descriptor.ProductId == KnownUsbIdentifiers.QualcommEdlProductId)
+        {
+            return DeviceMode.QualcommEdl;
+        }
+
+        if (descriptor.VendorId == KnownUsbIdentifiers.MediaTekVendorId)
+        {
+            return name.Contains("bootrom") ? DeviceMode.MediaTekBootrom : DeviceMode.MediaTekPreloader;
+        }
+
+        if (descriptor.VendorId == KnownUsbIdentifiers.SamsungVendorId &&
+            (name.Contains("download") || descriptor.ProductId == 0x685D || descriptor.ProductId == 0x6860 || descriptor.ProductId == 0x6863))
+        {
+            return DeviceMode.Download;
+        }
+
+        if (descriptor.VendorId == KnownUsbIdentifiers.GoogleVendorId && descriptor.ProductId == KnownUsbIdentifiers.GoogleFastbootProductId)
+        {
+            return DeviceMode.Fastboot;
+        }
+
+        return DeviceMode.UsbGeneric;
+    }
+}

@@ -173,7 +173,7 @@ public sealed class PluginsViewModel : PageViewModelBase
 
     private void Rescan()
     {
-        var result = _host.ScanAndLoad(_paths.Plugins, _trust.GetTrustedPublishers(), _settings.Current.AllowPluginLoading);
+        var result = _host.ScanAndLoad(_paths.Plugins, _trust.GetTrustedPublishers(), _settings.Current.AllowPluginLoading, _trust.GetPublisherKey);
         LoadRows();
         Status = $"Активных модулей: {_host.All.Count}; внешних загружено: {result.Loaded.Count}; отклонено: {result.Rejected.Count}.";
     }

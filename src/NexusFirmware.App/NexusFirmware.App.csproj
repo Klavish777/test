@@ -7,6 +7,7 @@
     <RootNamespace>NexusFirmware.App</RootNamespace>
     <AssemblyName>NexusFirmwareStudio</AssemblyName>
     <ApplicationManifest>app.manifest</ApplicationManifest>
+    <ApplicationIcon>..\..\installer\nexus.ico</ApplicationIcon>
     <EnableWindowsTargeting>true</EnableWindowsTargeting>
     <SatelliteResourceLanguages>en</SatelliteResourceLanguages>
     <Description>NEXUS Firmware Studio — рабочее место сервисного инженера.</Description>

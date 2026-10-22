@@ -41,6 +41,31 @@ public sealed class TrustRepository
         command.ExecuteNonQuery();
     }
 
+    /// <summary>Сохраняет открытый ключ издателя (PEM) для проверки подписи манифестов.</summary>
+    public void SetPublisherKey(string publisher, string publicKeyPem)
+    {
+        using var connection = _database.OpenConnection();
+        using var command = connection.CreateCommand();
+        command.CommandText = """
+            INSERT INTO publisher_key (publisher, public_key_pem, added_at) VALUES ($publisher, $key, $at)
+            ON CONFLICT(publisher) DO UPDATE SET public_key_pem = excluded.public_key_pem;
+            """;
+        command.Parameters.AddWithValue("$publisher", publisher);
+        command.Parameters.AddWithValue("$key", publicKeyPem);
+        command.Parameters.AddWithValue("$at", DateTimeOffset.Now.ToString("O", CultureInfo.InvariantCulture));
+        command.ExecuteNonQuery();
+    }
+
+    /// <summary>Открытый ключ издателя или null, если он не задан.</summary>
+    public string? GetPublisherKey(string publisher)
+    {
+        using var connection = _database.OpenConnection();
+        using var command = connection.CreateCommand();
+        command.CommandText = "SELECT public_key_pem FROM publisher_key WHERE publisher = $publisher LIMIT 1;";
+        command.Parameters.AddWithValue("$publisher", publisher);
+        return command.ExecuteScalar() as string;
+    }
+
     public void Revoke(string publisher)
     {
         using var connection = _database.OpenConnection();

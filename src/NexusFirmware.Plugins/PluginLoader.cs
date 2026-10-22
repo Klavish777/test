@@ -75,7 +75,8 @@ public sealed class PluginLoader
             }
 
             var assemblyPath = Path.Combine(pluginsDirectory, Path.GetFileName(manifest.AssemblyFile));
-            var validation = policy.Validate(manifest, assemblyPath);
+            var signature = ReadSignature(assemblyPath);
+            var validation = policy.Validate(manifest, assemblyPath, signature);
             if (!validation.IsTrusted)
             {
                 rejected.Add(validation);
@@ -120,6 +121,13 @@ public sealed class PluginLoader
 
         return Activator.CreateInstance(type) as INexusPlugin
             ?? throw new InvalidOperationException($"Не удалось создать экземпляр {entryType}.");
+    }
+
+    /// <summary>Отсоединённая подпись манифеста: файл {сборка}.sig рядом со сборкой.</summary>
+    private static string? ReadSignature(string assemblyPath)
+    {
+        var signaturePath = assemblyPath + ".sig";
+        return File.Exists(signaturePath) ? File.ReadAllText(signaturePath).Trim() : null;
     }
 
     private sealed class PluginLoadContext : AssemblyLoadContext

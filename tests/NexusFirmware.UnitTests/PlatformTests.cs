@@ -87,6 +87,75 @@ public sealed class PluginTrustTests
     }
 
     [Test]
+    public void VerifiesManifestSignatureWithPublisherKey()
+    {
+        using var temp = new TempDirectory();
+        var assembly = Path.Combine(temp.Path, "plugin.dll");
+        File.WriteAllText(assembly, "signed assembly");
+        var hash = Hashing.Sha256FileAsync(assembly).GetAwaiter().GetResult();
+
+        using var rsa = System.Security.Cryptography.RSA.Create(2048);
+        var publicKey = rsa.ExportPkcs8PrivateKeyPem();
+        var publicOnly = rsa.ExportSubjectPublicKeyInfoPem();
+
+        var manifest = new PluginManifest
+        {
+            Id = "acme.plugin",
+            Name = "ACME",
+            Version = "1.0.0",
+            Publisher = "Acme",
+            Sha256 = hash
+        };
+
+        var signature = PluginSignature.Sign(manifest, rsa);
+        var policy = new PluginTrustPolicy(new[] { "Acme" }, true, "1.0.0", key => key == "Acme" ? publicOnly : null);
+
+        var valid = policy.Validate(manifest, assembly, signature);
+        Assert.That(valid.Decision, Is.EqualTo(PluginTrustDecision.Trusted));
+        Assert.That(valid.Message, Does.Contain("подпись манифеста верна"));
+
+        var tampered = new PluginManifest
+        {
+            Id = "acme.plugin",
+            Name = "ACME",
+            Version = "1.0.1",
+            Publisher = "Acme",
+            Sha256 = hash
+        };
+
+        var invalid = policy.Validate(tampered, assembly, signature);
+        Assert.That(invalid.Decision, Is.EqualTo(PluginTrustDecision.SignatureInvalid));
+
+        var missing = policy.Validate(manifest, assembly, null);
+        Assert.That(missing.Decision, Is.EqualTo(PluginTrustDecision.SignatureInvalid));
+
+        Assert.That(publicKey, Does.Contain("PRIVATE KEY"));
+    }
+
+    [Test]
+    public void WriteCapablePluginWithoutVerifiedSignatureIsRejected()
+    {
+        using var temp = new TempDirectory();
+        var assembly = Path.Combine(temp.Path, "plugin.dll");
+        File.WriteAllText(assembly, "bytes");
+        var hash = Hashing.Sha256FileAsync(assembly).GetAwaiter().GetResult();
+
+        var manifest = new PluginManifest
+        {
+            Id = "writer",
+            Name = "Writer",
+            Version = "1.0.0",
+            Publisher = "Acme",
+            Sha256 = hash,
+            Limits = new PluginLimits { CanWriteDevice = true }
+        };
+
+        var result = new PluginTrustPolicy(new[] { "Acme" }, true).Validate(manifest, assembly);
+        Assert.That(result.Decision, Is.EqualTo(PluginTrustDecision.NotAllowedByPolicy));
+        Assert.That(result.Message, Does.Contain("подпись"));
+    }
+
+    [Test]
     public void BuiltInPluginDescribesOperations()
     {
         var plugin = new GenericAndroidPlugin();

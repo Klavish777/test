@@ -9,11 +9,18 @@ namespace NexusFirmware.Plugins;
 /// </summary>
 public sealed class PluginTrustPolicy
 {
-    public PluginTrustPolicy(IReadOnlyCollection<string> trustedPublishers, bool allowLoading, string hostVersion = "1.0.0")
+    private readonly Func<string, string?>? _publisherKeyLookup;
+
+    public PluginTrustPolicy(
+        IReadOnlyCollection<string> trustedPublishers,
+        bool allowLoading,
+        string hostVersion = "1.0.0",
+        Func<string, string?>? publisherKeyLookup = null)
     {
         TrustedPublishers = trustedPublishers;
         AllowLoading = allowLoading;
         HostVersion = hostVersion;
+        _publisherKeyLookup = publisherKeyLookup;
     }
 
     public IReadOnlyCollection<string> TrustedPublishers { get; }
@@ -22,7 +29,7 @@ public sealed class PluginTrustPolicy
 
     public string HostVersion { get; }
 
-    public PluginValidationResult Validate(PluginManifest manifest, string assemblyPath)
+    public PluginValidationResult Validate(PluginManifest manifest, string assemblyPath, string? signatureBase64 = null)
     {
         if (string.IsNullOrWhiteSpace(manifest.Id) || string.IsNullOrWhiteSpace(manifest.Name) || string.IsNullOrWhiteSpace(manifest.Version))
         {
@@ -76,6 +83,27 @@ public sealed class PluginTrustPolicy
                 $"Издатель «{manifest.Publisher}» отсутствует в списке доверенных.");
         }
 
+        var publisherKey = _publisherKeyLookup?.Invoke(manifest.Publisher!);
+        var signatureVerified = false;
+
+        if (!string.IsNullOrWhiteSpace(publisherKey))
+        {
+            signatureBase64 ??= manifest.Signature;
+            if (!PluginSignature.Verify(manifest, signatureBase64, publisherKey))
+            {
+                return new PluginValidationResult(PluginTrustDecision.SignatureInvalid,
+                    $"Подпись манифеста не соответствует открытому ключу издателя «{manifest.Publisher}».");
+            }
+
+            signatureVerified = true;
+        }
+
+        if (manifest.Limits.CanWriteDevice && !signatureVerified)
+        {
+            return new PluginValidationResult(PluginTrustDecision.NotAllowedByPolicy,
+                "Плагин заявляет запись на устройство, но его подпись не подтверждена ключом издателя.");
+        }
+
         if (!AllowLoading)
         {
             return new PluginValidationResult(PluginTrustDecision.NotAllowedByPolicy,
@@ -83,7 +111,11 @@ public sealed class PluginTrustPolicy
         }
 
         return new PluginValidationResult(PluginTrustDecision.Trusted,
-            "Плагин проверен: SHA-256 совпадает, издатель доверенный.", manifest, assemblyPath);
+            signatureVerified
+                ? "Плагин проверен: SHA-256 совпадает, подпись манифеста верна, издатель доверенный."
+                : "Плагин проверен: SHA-256 совпадает, издатель доверенный (подпись не проверялась — ключ издателя не задан).",
+            manifest,
+            assemblyPath);
     }
 
     private static string NormalizeVersion(string version)
