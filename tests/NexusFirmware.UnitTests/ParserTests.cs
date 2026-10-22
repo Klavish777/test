@@ -5,6 +5,7 @@ using NexusFirmware.Firmware.Ota;
 using NexusFirmware.Firmware.Qualcomm;
 using NexusFirmware.Firmware.Samsung;
 using NexusFirmware.Firmware.Scatter;
+using NUnit.Framework;
 
 namespace NexusFirmware.UnitTests;
 

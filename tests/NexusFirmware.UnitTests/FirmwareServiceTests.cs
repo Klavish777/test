@@ -5,6 +5,7 @@ using NexusFirmware.Firmware.Comparison;
 using NexusFirmware.Firmware.Compatibility;
 using NexusFirmware.Firmware.Extractor;
 using NexusFirmware.Firmware.Library;
+using NUnit.Framework;
 
 namespace NexusFirmware.UnitTests;
 

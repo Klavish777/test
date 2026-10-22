@@ -1,5 +1,6 @@
 using NexusFirmware.Core.Abstractions;
 using NexusFirmware.Core.Models;
+using NUnit.Framework;
 
 namespace NexusFirmware.UnitTests;
 

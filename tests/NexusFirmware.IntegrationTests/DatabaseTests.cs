@@ -1,6 +1,7 @@
 using NexusFirmware.Core.Models;
 using NexusFirmware.Infrastructure.Data;
 using NexusFirmware.UnitTests;
+using NUnit.Framework;
 
 namespace NexusFirmware.IntegrationTests;
 

@@ -5,6 +5,7 @@ using NexusFirmware.Core.Reporting;
 using NexusFirmware.Core.Safety;
 using NexusFirmware.Plugins;
 using NexusFirmware.Plugins.BuiltIn;
+using NUnit.Framework;
 
 namespace NexusFirmware.UnitTests;
 

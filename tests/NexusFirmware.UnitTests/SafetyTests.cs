@@ -1,5 +1,6 @@
 using System.Text;
 using NexusFirmware.Core.Safety;
+using NUnit.Framework;
 
 namespace NexusFirmware.UnitTests;
 

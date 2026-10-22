@@ -6,6 +6,7 @@ using NexusFirmware.Core.Models;
 using NexusFirmware.Firmware.Archives;
 using NexusFirmware.Firmware.Detection;
 using NexusFirmware.Firmware.Images;
+using NUnit.Framework;
 
 namespace NexusFirmware.UnitTests;
 

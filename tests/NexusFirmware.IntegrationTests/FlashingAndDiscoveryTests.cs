@@ -9,6 +9,7 @@ using NexusFirmware.Firmware.Extractor;
 using NexusFirmware.Flashing;
 using NexusFirmware.Infrastructure.Processes;
 using NexusFirmware.UnitTests;
+using NUnit.Framework;
 
 namespace NexusFirmware.IntegrationTests;
 

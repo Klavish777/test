@@ -2,6 +2,7 @@ using NexusFirmware.Core.Models;
 using NexusFirmware.DeviceDetection.Adb;
 using NexusFirmware.DeviceDetection.Fastboot;
 using NexusFirmware.DeviceDetection.Usb;
+using NUnit.Framework;
 
 namespace NexusFirmware.UnitTests;
 
