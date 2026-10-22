@@ -40,6 +40,9 @@ public static partial class InputValidator
         }
     }
 
+    private static readonly char[] InvalidFileNameChars =
+        Path.GetInvalidFileNameChars().Concat(new[] { '<', '>', ':', '"', '/', '\\', '|', '?', '*' }).Distinct().ToArray();
+
     public static string SanitizeFileName(string? fileName, string fallback = "file")
     {
         if (string.IsNullOrWhiteSpace(fileName))
@@ -47,8 +50,9 @@ public static partial class InputValidator
             return fallback;
         }
 
-        var name = Path.GetFileName(fileName.Trim());
-        foreach (var c in Path.GetInvalidFileNameChars())
+        var name = Path.GetFileName(fileName.Replace('\\', '/').Trim());
+        // Набор символов, недопустимых в Windows, применяется всегда: результат не зависит от ОС.
+        foreach (var c in InvalidFileNameChars)
         {
             name = name.Replace(c, '_');
         }

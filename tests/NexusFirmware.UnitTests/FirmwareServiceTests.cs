@@ -80,8 +80,23 @@ public sealed class FirmwareComparerTests
     public void ComparesMetadataAndArchiveContents()
     {
         using var temp = new TempDirectory();
-        var left = TestData.CreateFirmwareZip(temp.Path, "boot.img", "system.img");
-        var right = TestData.CreateFirmwareZip(Path.Combine(temp.Path), "boot.img", "vendor.img");
+        var left = Path.Combine(temp.Path, "left.zip");
+        using (var zip = ZipFile.Open(left, ZipArchiveMode.Create))
+        {
+            using var a = new StreamWriter(zip.CreateEntry("boot.img").Open());
+            a.Write("boot");
+            using var b = new StreamWriter(zip.CreateEntry("system.img").Open());
+            b.Write("system");
+        }
+
+        var right = Path.Combine(temp.Path, "right.zip");
+        using (var zip = ZipFile.Open(right, ZipArchiveMode.Create))
+        {
+            using var a = new StreamWriter(zip.CreateEntry("boot.img").Open());
+            a.Write("boot");
+            using var b = new StreamWriter(zip.CreateEntry("vendor.img").Open());
+            b.Write("vendor");
+        }
 
         var leftPackage = new FirmwarePackage
         {

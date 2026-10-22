@@ -36,8 +36,8 @@ public static class PayloadParser
     public static PayloadInfo Read(string path)
     {
         using var stream = File.OpenRead(path);
-        Span<byte> header = stackalloc byte[20];
-        if (stream.Read(header) != 20)
+        Span<byte> header = stackalloc byte[24];
+        if (stream.Read(header) != 24)
         {
             throw new InvalidDataException("Файл слишком мал для заголовка payload.bin.");
         }

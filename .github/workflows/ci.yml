@@ -85,8 +85,14 @@ jobs:
         if: failure()
         shell: bash
         run: |
-          cat unit.log integration.log 2>/dev/null | grep -E "(Failed|Ошибка|Error Message|Assert|error)" | head -60 | while IFS= read -r line; do
-            echo "::error::$line"
+          for log in unit.log integration.log; do
+            [ -f "$log" ] || continue
+            awk '
+              /^  Failed /   { flag=1; buf=$0; next }
+              flag && NF==0  { print "::error::" substr(buf,1,900); flag=0; next }
+              flag           { buf=buf " || " $0 }
+              END            { if (flag) print "::error::" substr(buf,1,900) }
+            ' "$log" | head -25
           done
 
       - name: Публикация результатов тестов
