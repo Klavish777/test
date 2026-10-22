@@ -1,3 +1,4 @@
+using NexusFirmware.Core.Jobs;
 using NexusFirmware.Core.Models;
 
 namespace NexusFirmware.Flashing;
