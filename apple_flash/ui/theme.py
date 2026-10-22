@@ -78,11 +78,56 @@ QPushButton#NavBtn:hover {{
     background-color: {surface_alt};
     color: {text};
 }}
-QPushButton#NavBtn:checked {{
-    background-color: {accent_soft};
-    color: #ffffff;
+QPushButton#NavTab {{
+    background: transparent;
+    border: 1px solid transparent;
+    border-radius: 9px;
+    padding: 8px 16px;
+    color: {text_muted};
+    font-size: 13px;
     font-weight: 600;
-    border-left: 3px solid {accent};
+}}
+QPushButton#NavTab:hover {{
+    background-color: {surface_alt};
+    color: {text};
+}}
+QPushButton#NavTab:checked {{
+    background-color: {accent_soft};
+    border: 1px solid rgba(10, 132, 255, 0.55);
+    color: #ffffff;
+}}
+QPushButton#FlashActionBtn {{
+    background-color: {accent};
+    border: 1px solid {accent};
+    border-radius: 10px;
+    padding: 11px 20px;
+    color: #ffffff;
+    font-size: 15px;
+    font-weight: 700;
+}}
+QPushButton#FlashActionBtn:hover {{
+    background-color: {accent_hover};
+    border-color: {accent_hover};
+}}
+QPushButton#FlashActionBtn:disabled {{
+    background-color: {surface_alt};
+    border-color: {border};
+    color: {text_dim};
+}}
+QFrame#WarnBanner {{
+    background-color: rgba(255, 159, 10, 0.13);
+    border: 1px solid rgba(255, 159, 10, 0.48);
+    border-radius: 10px;
+}}
+QFrame#OkBanner {{
+    background-color: rgba(48, 209, 88, 0.12);
+    border: 1px solid rgba(48, 209, 88, 0.44);
+    border-radius: 10px;
+}}
+QFrame#ErrBanner {{
+    background-color: rgba(255, 69, 58, 0.13);
+    border: 1px solid rgba(255, 69, 58, 0.48);
+    border-radius: 10px;
 }}
 
 /* Карточки */
@@ -138,7 +183,7 @@ QLabel#Dim {{
 /* Бейджи */
 QLabel#Pill {{
     border-radius: 9px;
-    padding: 3px 9px;
+    padding: 4px 12px;
     font-size: 11px;
     font-weight: 600;
 }}

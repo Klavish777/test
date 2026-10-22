@@ -37,15 +37,15 @@ jobs:
           QT_QPA_PLATFORM: offscreen
         run: python -m pytest tests -q
 
-      - name: Проверка баз и демо-данных
+      - name: Самодиагностика баз и встроенного движка USB
         env:
           QT_QPA_PLATFORM: offscreen
         run: |
           python main.py --check --no-demo
-          python apple_flash_main.py --check --no-demo
+          python apple_flash_main.py --check-runtime
 
   build-windows:
-    name: Сборка Windows (Apple Flash Studio EXE + установщик)
+    name: Сборка Windows (Apple Flash Studio v2.0 EXE + установщик)
     runs-on: windows-latest
     needs: tests
     steps:
@@ -70,10 +70,10 @@ jobs:
           QT_QPA_PLATFORM: offscreen
         run: python -m pytest tests -q
 
-      - name: Сборка Apple Flash Studio (EXE + Portable ZIP + Setup EXE)
+      - name: Сборка Apple Flash Studio v2.0 (EXE + Portable ZIP + Setup EXE)
         shell: pwsh
         run: |
-          ./scripts/build_apple_flash_windows.ps1 -Version "1.0.0" -SkipTests -UseCurrentPython
+          ./scripts/build_apple_flash_windows.ps1 -Version "2.0.0" -SkipTests -UseCurrentPython
 
       - name: Проверка артефактов
         shell: pwsh
@@ -86,8 +86,8 @@ jobs:
         with:
           name: AppleFlashStudio-Windows
           path: |
-            installer/Output/AppleFlashStudio-1.0.0-setup.exe
-            installer/Output/AppleFlashStudio-1.0.0-portable-win64.zip
+            installer/Output/AppleFlashStudio-2.0.0-setup.exe
+            installer/Output/AppleFlashStudio-2.0.0-portable-win64.zip
           if-no-files-found: error
 
       - name: Публикация сборки для скачивания (GitHub Release / Pre-release)
@@ -96,17 +96,20 @@ jobs:
         with:
           tag_name: ${{ startsWith(github.ref, 'refs/tags/v') && github.ref_name || format('apple-flash-build-{0}', github.run_number) }}
           target_commitish: ${{ github.sha }}
-          name: "Apple Flash Studio v1.0.0 (сборка #${{ github.run_number }})"
+          name: "Apple Flash Studio v2.0.0 (сборка #${{ github.run_number }})"
           draft: false
           prerelease: ${{ !startsWith(github.ref, 'refs/tags/v') }}
           files: |
-            installer/Output/AppleFlashStudio-1.0.0-setup.exe
-            installer/Output/AppleFlashStudio-1.0.0-portable-win64.zip
+            installer/Output/AppleFlashStudio-2.0.0-setup.exe
+            installer/Output/AppleFlashStudio-2.0.0-portable-win64.zip
           body: |
-            Готовая сборка **Apple Flash Studio v1.0.0** для Windows 10/11 (x64) — перепрошивка и восстановление **iPhone, iPad и MacBook (Apple Silicon M1–M4 / Intel T2)**.
+            Готовая сборка **Apple Flash Studio v2.0.0** для Windows 10/11 (x64) — реальное обнаружение по USB и перепрошивка **iPhone, iPad и MacBook (Apple Silicon M1–M4 / Intel T2)**.
+
+            ### Что нового в v2.0.0:
+            - **Встроенный реальный движок внутри EXE**: `pymobiledevice3` + `libusb-1.0.dll` + база 340+ моделей Apple + сертификаты Apple TSS упакованы прямо внутрь программы (не требуется Python или сторонние консольные утилиты).
+            - **Автоматическое обнаружение USB каждые 2.5 секунды**: трёхуровневый поиск (`usbmuxd` без спама запросом «Доверять» + `libusb IRecv` для DFU/Recovery + мгновенный нативный `Win32 SetupAPI` для устройств без драйвера).
+            - **Лаконичный и понятный интерфейс на русском языке**: без фейковых макетов `DEMO_*.ipsw` и без лишних вкладок — устройство слева, выбор `.ipsw` и кнопка прошивки справа.
 
             ### Файлы для скачивания:
-            - **`AppleFlashStudio-1.0.0-setup.exe`** — установщик для Windows 10/11 (создаёт ярлык в меню «Пуск» и на рабочем столе).
-            - **`AppleFlashStudio-1.0.0-portable-win64.zip`** — портативная версия без установки (распакуйте архив в любую папку и запустите `AppleFlashStudio.exe`).
-
-            В сборку уже включён интерфейс `PySide6` и Python-бэкенд `pymobiledevice3`.
+            - **`AppleFlashStudio-2.0.0-setup.exe`** — установщик для Windows 10/11.
+            - **`AppleFlashStudio-2.0.0-portable-win64.zip`** — портативная версия без установки (`AppleFlashStudio.exe`).

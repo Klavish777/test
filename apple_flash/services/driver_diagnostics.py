@@ -1,184 +1,191 @@
-"""Диагностика драйверов Windows (Apple Mobile Device, WinUSB/DFU) и CLI-бэкендов прошивки."""
+"""Диагностика драйверов Windows 10/11, службы Apple Mobile Device Service и встроенного движка USB."""
 
 from __future__ import annotations
 
-import importlib.util
-import platform
 import shutil
-import subprocess
 import sys
 from pathlib import Path
 
-from apple_flash.core.security import resolve_pmb3_command, windows_no_window_kwargs
+from apple_flash.core.usb_runtime import check_runtime_health, initialize_runtime
 from apple_flash.data.models import DriverCheckItem
+from apple_flash.services.win32_usb import (
+    AppleUsbWin32Entry,
+    check_usbmux_tcp_port,
+    enumerate_apple_usb_win32,
+    probe_amds_windows,
+)
 
 
 class DriverDiagnostics:
-    """Проверяет готовность рабочей станции Windows к перепрошивке iPhone, iPad и MacBook."""
+    """Проверяет готовность Windows к обнаружению и прошивке iPhone, iPad и MacBook."""
 
     def __init__(self, tools_dir: Path | None = None) -> None:
         self.tools_dir = tools_dir
+        initialize_runtime()
 
-    def _find_tool(self, name: str) -> str | None:
-        exe = f"{name}.exe" if sys.platform == "win32" else name
-        if self.tools_dir:
-            for candidate in (self.tools_dir / exe, self.tools_dir / name):
-                if candidate.is_file():
-                    return str(candidate)
-        return shutil.which(name)
+    def raw_usb_entries(self) -> list[AppleUsbWin32Entry]:
+        """Возвращает список текущих интерфейсов Apple VID_05AC на шине USB Windows."""
+        return enumerate_apple_usb_win32() if sys.platform == "win32" else []
 
-    def _run_quiet(self, cmd: list[str], timeout: float = 4.0) -> subprocess.CompletedProcess[str] | None:
-        try:
-            return subprocess.run(
-                cmd,
-                capture_output=True,
-                text=True,
-                encoding="utf-8",
-                errors="replace",
-                timeout=timeout,
-                check=False,
-                **windows_no_window_kwargs(),
-            )
-        except (OSError, subprocess.SubprocessError):
-            return None
-
-    def run_all_checks(self) -> list[DriverCheckItem]:
+    def run_checks(self) -> list[DriverCheckItem]:
+        health = check_runtime_health()
         items: list[DriverCheckItem] = []
 
-        # 1. Платформа ОС
-        os_desc = f"{platform.system()} {platform.release()} ({platform.machine()})"
-        if sys.platform == "win32":
-            items.append(
-                DriverCheckItem(
-                    key="os",
-                    title="Операционная система Windows",
-                    status="ok",
-                    summary=f"Обнаружена поддерживаемая среда: {os_desc}.",
-                    recommendation="Используйте порты USB 2.0 / 3.0 напрямую на материнской плате (без пассивных USB-хабов).",
-                )
+        # 1. Встроенный движок прошивки pymobiledevice3
+        pmb_ok, pmb_msg = health.get("pymobiledevice3", (False, "Не найден"))
+        items.append(
+            DriverCheckItem(
+                key="builtin_engine",
+                title="Встроенный движок прошивки Apple (pymobiledevice3)",
+                status="ok" if pmb_ok else "missing",
+                summary=pmb_msg,
+                recommendation=(
+                    "Работает из коробки внутри программы — устанавливать Python или сторонние скрипты не нужно."
+                    if pmb_ok
+                    else "Переустановите полную сборку Apple Flash Studio."
+                ),
             )
-        else:
-            items.append(
-                DriverCheckItem(
-                    key="os",
-                    title="Среда запуска (кроссплатформенный режим)",
-                    status="info",
-                    summary=f"Запущено на {os_desc} (целевая платформа сборки EXE — Windows 10/11 x64).",
-                    recommendation="На Linux/macOS проверка служб Windows пропускается, но анализ IPSW и CLI работают штатно.",
-                )
-            )
+        )
 
-        # 2. Служба Apple Mobile Device Service (usbmuxd на Windows)
+        # 2. Низкоуровневая библиотека USB (libusb-1.0 для Recovery и DFU)
+        usb_ok, usb_msg = health.get("libusb", (False, "Не найдена"))
+        usb_display = Path(usb_msg).name if ("/" in usb_msg or "\\" in usb_msg) else usb_msg
+        items.append(
+            DriverCheckItem(
+                key="libusb",
+                title="Драйвер прямого обмена с DFU и Recovery (libusb-1.0)",
+                status="ok" if usb_ok else "missing",
+                summary=f"Библиотека активна: {usb_display}",
+                recommendation=(
+                    "Библиотека libusb-1.0 встроена в программу и готова к отправке загрузчиков iBSS/iBEC."
+                    if usb_ok
+                    else "Проверьте целостность папки программы (файл libusb-1.0.dll)."
+                ),
+            )
+        )
+
+        # 3. Служба Apple Mobile Device Service (usbmuxd) для обычного режима
         if sys.platform == "win32":
-            sc_res = self._run_quiet(["sc", "query", "AppleMobileDeviceService"])
-            if sc_res and "RUNNING" in (sc_res.stdout or "").upper():
+            installed, running, detail = probe_amds_windows()
+            if installed and running:
                 items.append(
                     DriverCheckItem(
                         key="amds",
-                        title="Служба Apple Mobile Device Service (USBMux)",
+                        title="Драйвер обычного режима iOS / iPadOS (Apple Mobile Device Service)",
                         status="ok",
-                        summary="Служба установлена и запущена (RUNNING) — связь в Обычном режиме активна.",
+                        summary=detail,
+                        recommendation="Включённые iPhone и iPad определяются автоматически при подключении кабеля.",
                     )
                 )
-            elif sc_res and sc_res.returncode == 0:
+            elif installed and not running:
                 items.append(
                     DriverCheckItem(
                         key="amds",
-                        title="Служба Apple Mobile Device Service (USBMux)",
+                        title="Драйвер обычного режима iOS / iPadOS (Apple Mobile Device Service)",
                         status="warning",
-                        summary="Служба установлена, но остановлена.",
-                        recommendation="Запустите службу в services.msc или переоткройте приложение «Устройства Apple» / iTunes.",
+                        summary=detail,
+                        recommendation=(
+                            "Откройте приложение «Устройства Apple» (или iTunes) один раз либо перезапустите службу "
+                            "«Apple Mobile Device Service» в окне services.msc."
+                        ),
                     )
                 )
             else:
                 items.append(
                     DriverCheckItem(
                         key="amds",
-                        title="Служба Apple Mobile Device Service (USBMux)",
+                        title="Драйвер обычного режима iOS / iPadOS (Apple Mobile Device Service)",
                         status="missing",
-                        summary="Служба не найдена в Windows.",
+                        summary=detail,
                         recommendation=(
-                            "Установите официальное приложение «Устройства Apple» (Apple Devices) из Microsoft Store "
-                            "или классический пакет iTunes (x64) с сайта Apple для драйверов usbaapl64."
+                            "Нажмите кнопку «Установить Устройства Apple из Microsoft Store» выше — официальное приложение "
+                            "Apple бесплатно установит подписанный драйвер Apple USB и службу usbmuxd."
                         ),
                     )
                 )
         else:
-            usbmuxd_bin = shutil.which("usbmuxd")
+            port_up = check_usbmux_tcp_port() or Path("/var/run/usbmuxd").exists()
             items.append(
                 DriverCheckItem(
                     key="amds",
-                    title="Демон связи USBMuxd",
-                    status="ok" if usbmuxd_bin else "info",
+                    title="Системная служба Apple USB (usbmuxd)",
+                    status="ok" if port_up else "info",
                     summary=(
-                        f"Найден системный usbmuxd: {usbmuxd_bin}"
-                        if usbmuxd_bin
-                        else "На Windows роль usbmuxd выполняет служба AppleMobileDeviceService."
+                        "Служба usbmuxd активна в системе."
+                        if port_up
+                        else f"Среда {sys.platform}: полная проверка драйверов выполняется при запуске на Windows 10/11."
                     ),
+                    recommendation="На Windows 10/11 установите «Устройства Apple» из Microsoft Store для работы с включёнными iPhone/iPad.",
                 )
             )
 
-        # 3. Бэкенд pymobiledevice3
-        pmb_base = resolve_pmb3_command(self.tools_dir)
-        if pmb_base:
-            loc = " ".join(pmb_base)
-            items.append(
-                DriverCheckItem(
-                    key="pymobiledevice3",
-                    title="Бэкенд прошивки pymobiledevice3 (Python)",
-                    status="ok",
-                    summary=f"Модуль готов к работе ({loc}). Поддерживает Update, Erase и Recovery.",
+        # 4. Состояние драйвера для подключённых прямо сейчас устройств в DFU / Recovery
+        usb_entries = self.raw_usb_entries()
+        boot_entries = [e for e in usb_entries if e.mode in {"dfu", "recovery", "wtf"}]
+        if boot_entries:
+            e = boot_entries[0]
+            svc = (e.service or "").upper()
+            if any(k in svc for k in ("WINUSB", "LIBUSB")):
+                items.append(
+                    DriverCheckItem(
+                        key="dfu_driver",
+                        title=f"Драйвер текущего устройства в режиме {e.mode.upper()}",
+                        status="ok",
+                        summary=f"Назначен совместимый драйвер {e.service} ({e.description}).",
+                        recommendation="Устройство полностью готово к прямой прошивке и выходу из Recovery.",
+                    )
                 )
-            )
+            else:
+                items.append(
+                    DriverCheckItem(
+                        key="dfu_driver",
+                        title=f"Драйвер текущего устройства в режиме {e.mode.upper()}",
+                        status="warning",
+                        summary=(
+                            f"Назначен драйвер «{e.service or 'не установлен'}» — он блокирует прямой доступ libusb в режиме DFU/Recovery."
+                        ),
+                        recommendation=(
+                            "Скачайте бесплатную утилиту Zadig (zadig.akeo.ie), выберите «Apple Mobile Device (DFU/Recovery Mode)» "
+                            "и нажмите «Replace Driver» → WinUSB."
+                        ),
+                    )
+                )
         else:
             items.append(
                 DriverCheckItem(
-                    key="pymobiledevice3",
-                    title="Бэкенд прошивки pymobiledevice3 (Python)",
-                    status="missing",
-                    summary="Пакет pymobiledevice3 не установлен в текущем окружении.",
-                    recommendation="Выполните: pip install pymobiledevice3 — для прямой прошивки iPhone, iPad и MacBook.",
-                )
-            )
-
-        # 4. Бэкенд idevicerestore + irecovery (libimobiledevice)
-        idr = self._find_tool("idevicerestore")
-        irec = self._find_tool("irecovery")
-        if idr:
-            items.append(
-                DriverCheckItem(
-                    key="idevicerestore",
-                    title="Бэкенд idevicerestore / irecovery (libimobiledevice)",
-                    status="ok",
-                    summary=f"Найден idevicerestore: {idr}" + (f" · irecovery: {irec}" if irec else ""),
-                )
-            )
-        else:
-            items.append(
-                DriverCheckItem(
-                    key="idevicerestore",
-                    title="Бэкенд idevicerestore / irecovery (libimobiledevice)",
-                    status="missing",
-                    summary="Бинарные файлы idevicerestore.exe / irecovery.exe не найдены в папке tools и PATH.",
+                    key="dfu_driver",
+                    title="Драйвер для режима DFU и MacBook (WinUSB)",
+                    status="info",
+                    summary="Сейчас нет подключённых устройств в режиме DFU / Recovery.",
                     recommendation=(
-                        "Положите сборки libimobiledevice для Windows (idevicerestore.exe, irecovery.exe, ideviceinfo.exe) "
-                        "в каталог tools приложения (Настройки → Открыть папку tools) или используйте pymobiledevice3."
+                        "Если при прошивке из чёрного экрана DFU (включая MacBook M1–M4) возникнет ошибка доступа к USB, "
+                        "замените драйвер устройства DFU с USBAAPL64 на WinUSB через утилиту Zadig."
                     ),
                 )
             )
 
-        # 5. Памятка по WinUSB для DFU на Windows (критично для MacBook DFU и idevicerestore)
+        # 5. Дополнительный внешний idevicerestore (необязателен)
+        ext_irestore = self._find_tool("idevicerestore")
         items.append(
             DriverCheckItem(
-                key="dfu_winusb",
-                title="Драйвер DFU / Recovery для прошивки MacBook и libusb",
-                status="info",
-                summary="Для работы idevicerestore и DFU MacBook на Windows интерфейс 05ac:1227 должен быть доступен через WinUSB / libusbK.",
-                recommendation=(
-                    "Если устройство в DFU видно в Диспетчере устройств, но прошивальщик пишет «Unable to discover device», "
-                    "откройте утилиту Zadig при подключённом DFU-устройстве (Apple Mobile Device DFU Mode) и привяжите драйвер WinUSB."
+                key="idevicerestore",
+                title="Дополнительная утилита idevicerestore (необязательно)",
+                status="ok" if ext_irestore else "info",
+                summary=(
+                    f"Обнаружена: {ext_irestore}"
+                    if ext_irestore
+                    else "Не используется — прошивка выполняется встроенным движком pymobiledevice3."
                 ),
+                recommendation="При желании опытные мастера могут положить idevicerestore.exe в папку tools.",
             )
         )
 
         return items
+
+    def _find_tool(self, name: str) -> str | None:
+        exe = f"{name}.exe" if sys.platform == "win32" else name
+        if self.tools_dir:
+            cand = self.tools_dir / exe
+            if cand.is_file():
+                return str(cand)
+        return shutil.which(exe) or shutil.which(name)

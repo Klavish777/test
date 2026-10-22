@@ -1,389 +1,544 @@
-"""Автоопределение подключённых устройств Apple (iPhone, iPad, MacBook) по USB.
-
-Источники обнаружения (объединяются без дублей):
-1. CLI libimobiledevice (`idevice_id`, `ideviceinfo`, `irecovery`) — Normal, Recovery, DFU.
-2. Python/CLI `pymobiledevice3` — usbmuxd список устройств.
-3. Системная шина USB Windows PnP (`VID_05AC`) — видит физические устройства в DFU (`PID_1227`),
-   Recovery (`PID_1281`), Mac DFU (`PID_1901`) и извлекает `CPID`, `BDID`, `ECID` прямо из USB Instance ID,
-   даже если внешние утилиты ещё не установлены.
-4. Опциональный виртуальный стенд (только с явной меткой `[МАКЕТ]` для Dry-Run).
-"""
+"""Трёхуровневое обнаружение реальных устройств Apple по USB (usbmuxd + libusb IRecv + нативный Win32 SetupAPI)."""
 
 from __future__ import annotations
 
-import json
-import plistlib
-import re
+import asyncio
+import logging
 import shutil
 import subprocess
 import sys
 from pathlib import Path
 from typing import Any
 
-from apple_flash.core.security import resolve_pmb3_command, windows_no_window_kwargs
+from apple_flash.core.security import windows_no_window_kwargs
+from apple_flash.core.usb_runtime import initialize_runtime
 from apple_flash.data.apple_catalog import (
-    SPECS_BY_PRODUCT_TYPE,
     infer_device_family,
+    lookup_hardware_by_cpid_bdid,
     resolve_product_name,
 )
 from apple_flash.data.models import ConnectedDevice
+from apple_flash.services.win32_usb import (
+    AppleUsbWin32Entry,
+    classify_apple_pid,
+    enumerate_apple_usb_win32,
+    probe_amds_windows,
+)
 
-USB_TAG_RE = re.compile(r"([A-Z]{4}):([0-9A-Fa-f]+)")
-VID_PID_RE = re.compile(r"VID_05AC&PID_([0-9A-Fa-f]{4})", re.IGNORECASE)
+log = logging.getLogger("apple_flash.detector")
 
-
-VIRTUAL_PRESETS: dict[str, ConnectedDevice] = {
-    "iphone_normal": ConnectedDevice(
-        uid="00008130-001A2B3C4D5E6F01",
-        mode="normal",
-        product_type="iPhone16,1",
-        marketing_name="iPhone 15 Pro",
-        family="iphone",
-        ecid="0x001A2B3C4D5E6F01",
-        udid="00008130-001A2B3C4D5E6F01",
-        cpid=0x8130,
-        bdid=0x0C,
-        board_config="d83ap",
-        os_version="18.0.1",
-        build_version="22A3370",
-        serial_number="DEMO15PROX",
-        device_name="iPhone (Тестовый стенд)",
-        battery_percent=84,
-        usb_driver="usbmuxd (виртуальный)",
-        source_backend="virtual",
-        is_virtual=True,
-    ),
-    "ipad_recovery": ConnectedDevice(
-        uid="ECID:0x0022446688AACCEE",
-        mode="recovery",
-        product_type="iPad16,3",
-        marketing_name="iPad Pro 11\" (M4, Wi-Fi)",
-        family="ipad",
-        ecid="0x0022446688AACCEE",
-        cpid=0x8132,
-        bdid=0x08,
-        board_config="j717ap",
-        usb_driver="WinUSB (виртуальный)",
-        source_backend="virtual",
-        is_virtual=True,
-    ),
-    "macbook_dfu": ConnectedDevice(
-        uid="ECID:0x0099887766554433",
-        mode="dfu",
-        product_type="Mac15,3",
-        marketing_name="MacBook Pro 14\" (M3, 2023)",
-        family="macbook",
-        ecid="0x0099887766554433",
-        cpid=0x8122,
-        bdid=0x02,
-        board_config="j504ap",
-        usb_driver="WinUSB (виртуальный DFU)",
-        source_backend="virtual",
-        is_virtual=True,
-    ),
-}
+LOCKDOWN_PORT = 62078
 
 
-def parse_windows_pnp_apple_Output(raw_json: str) -> list[ConnectedDevice]:
-    """Разбирает JSON-вывод Win32_PnPEntity для USB-устройств Apple (VID_05AC)."""
-    raw_json = (raw_json or "").strip()
-    if not raw_json:
-        return []
-    try:
-        parsed = json.loads(raw_json)
-    except json.JSONDecodeError:
-        return []
-    items = parsed if isinstance(parsed, list) else [parsed]
-    results: list[ConnectedDevice] = []
-    seen_uids: set[str] = set()
-
-    for entry in items:
-        if not isinstance(entry, dict):
-            continue
-        pnp_id = str(entry.get("PNPDeviceID") or "")
-        match = VID_PID_RE.search(pnp_id)
-        if not match:
-            continue
-        pid = match.group(1).upper()
-        service = str(entry.get("Service") or "").strip() or None
-
-        tags = {k.upper(): v for k, v in USB_TAG_RE.findall(pnp_id)}
-        cpid = int(tags["CPID"], 16) if "CPID" in tags else None
-        bdid = int(tags["BDID"], 16) if "BDID" in tags else None
-        ecid_hex = f"0x{tags['ECID'].upper()}" if "ECID" in tags else None
-
-        if pid == "1227" or pid in {"1901", "1905"}:
-            mode = "dfu"
-        elif pid == "1281":
-            mode = "recovery"
-        elif pid == "1222":
-            mode = "wtf"
-        elif pid.startswith("129") or pid.startswith("12A"):
-            mode = "normal"
-        else:
-            continue
-
-        serial_tail = pnp_id.split("\\")[-1] if "\\" in pnp_id else pnp_id
-        uid = f"ECID:{ecid_hex}" if ecid_hex else f"USB:{pid}:{serial_tail[:24]}"
-        if uid in seen_uids:
-            continue
-        seen_uids.add(uid)
-
-        family = infer_device_family(None, cpid)
-        if pid in {"1901", "1905"} and family == "unknown":
-            family = "macbook"
-        name = resolve_product_name(None, cpid)
-        if name == "Устройство Apple" and entry.get("Name"):
-            name = str(entry["Name"])
-
-        results.append(
-            ConnectedDevice(
-                uid=uid,
-                mode=mode,
-                product_type=None,
-                marketing_name=name,
-                family=family,
-                ecid=ecid_hex,
-                cpid=cpid,
-                bdid=bdid,
-                usb_driver=service,
-                source_backend="windows_pnp",
-            )
-        )
-    return results
-
-
-def parse_irecovery_output(text: str) -> ConnectedDevice | None:
-    """Разбирает вывод `irecovery -q` для устройств в Recovery / DFU."""
-    kv: dict[str, str] = {}
-    for line in (text or "").splitlines():
-        if ":" in line:
-            k, v = line.split(":", 1)
-            kv[k.strip().upper()] = v.strip()
-    if not kv:
+def _norm_hex_ecid(val: int | str | None) -> str | None:
+    if val is None:
         return None
-    mode_raw = kv.get("MODE", "").lower()
-    mode = "dfu" if "dfu" in mode_raw else ("wtf" if "wtf" in mode_raw else "recovery")
-    product_type = kv.get("PRODUCT") or None
-    if product_type == "UNKNOWN":
-        product_type = None
-
-    def _hex(val: str | None) -> int | None:
-        if not val:
-            return None
+    if isinstance(val, int):
+        return f"0x{val:X}" if val > 0 else None
+    text = str(val).strip()
+    if not text:
+        return None
+    try:
+        parsed = int(text, 16) if text.lower().startswith("0x") else int(text)
+        return f"0x{parsed:X}"
+    except ValueError:
         try:
-            return int(val, 16) if val.lower().startswith("0x") else int(val, 16)
+            return f"0x{int(text, 16):X}"
         except ValueError:
-            return None
-
-    cpid = _hex(kv.get("CPID"))
-    bdid = _hex(kv.get("BDID"))
-    ecid = kv.get("ECID")
-    uid = f"ECID:{ecid}" if ecid else f"IREC:{cpid or 0:04X}"
-    family = infer_device_family(product_type, cpid)
-    return ConnectedDevice(
-        uid=uid,
-        mode=mode,
-        product_type=product_type,
-        marketing_name=resolve_product_name(product_type, cpid),
-        family=family,
-        ecid=ecid,
-        cpid=cpid,
-        bdid=bdid,
-        board_config=kv.get("MODEL"),
-        serial_number=kv.get("SRNM"),
-        source_backend="irecovery",
-    )
+            return text
 
 
 class DeviceDetector:
-    """Сканер подключённых устройств Apple."""
+    """Обнаруживает подключённые iPhone, iPad и MacBook в режимах Normal, Recovery и DFU."""
 
     def __init__(self, tools_dir: Path | None = None) -> None:
         self.tools_dir = tools_dir
-        self._active_virtual_key: str | None = None
-
-    @property
-    def active_virtual_key(self) -> str | None:
-        return self._active_virtual_key
+        self._test_virtual_preset: str | None = None
+        initialize_runtime()
 
     def set_virtual_device(self, preset_key: str | None) -> ConnectedDevice | None:
-        if preset_key is None or preset_key not in VIRTUAL_PRESETS:
-            self._active_virtual_key = None
+        """Используется только в автотестах для имитации подключённого профиля."""
+        self._test_virtual_preset = preset_key
+        if not preset_key or preset_key == "none":
+            self._test_virtual_preset = None
             return None
-        self._active_virtual_key = preset_key
-        return VIRTUAL_PRESETS[preset_key]
+        mapping = {
+            "iphone_normal": 0,
+            "ipad_recovery": 1,
+            "macbook_dfu": 2,
+        }
+        vlist = self.virtual_devices()
+        idx = mapping.get(preset_key)
+        return vlist[idx] if idx is not None and idx < len(vlist) else None
 
-    def resolve_binary(self, name: str) -> str | None:
-        candidates: list[Path] = []
+    def scan_devices(self, *, include_virtual: bool = False) -> list[ConnectedDevice]:
+        initialize_runtime()
+        devices: list[ConnectedDevice] = []
+        seen_ecids: set[str] = set()
+        seen_udids: set[str] = set()
+
+        def _register(dev: ConnectedDevice) -> None:
+            norm_ecid = _norm_hex_ecid(dev.ecid)
+            if norm_ecid:
+                dev.ecid = norm_ecid
+            norm_udid = dev.udid.lower() if dev.udid else None
+            if norm_ecid and norm_ecid in seen_ecids:
+                return
+            if norm_udid and norm_udid in seen_udids:
+                return
+            if norm_ecid:
+                seen_ecids.add(norm_ecid)
+            if norm_udid:
+                seen_udids.add(norm_udid)
+            devices.append(dev)
+
+        # Предварительно снимаем мгновенный снимок ядра Win32 USB (< 2 мс на Windows),
+        # чтобы обогатить устройства именем драйвера Windows и поймать устройства без драйвера.
+        win32_entries = enumerate_apple_usb_win32() if sys.platform == "win32" else []
+
+        # Уровень 1: Встроенный pymobiledevice3 (usbmux + pre-session lockdownd без запроса «Доверять»)
+        for dev in self._scan_usbmux_native(win32_entries):
+            _register(dev)
+
+        # Резерв Уровня 1: внешние утилиты libimobiledevice (если установлены и usbmux ещё не дал устройство)
+        if not devices:
+            for dev in self._scan_libimobiledevice():
+                _register(dev)
+
+        # Уровень 2: Встроенный pymobiledevice3 IRecv через libusb-1.0 (режимы Recovery / DFU / WTF)
+        for dev in self._scan_irecv_libusb(win32_entries):
+            _register(dev)
+
+        # Уровень 3: Нативный Win32 SetupAPI — находит физически подключённые по USB iPhone/iPad/MacBook,
+        # даже если в Windows не установлен Apple Mobile Device Service или драйвер USBAAPL64 блокирует DFU.
+        for dev in self._scan_win32_unmatched(win32_entries, seen_ecids, seen_udids):
+            _register(dev)
+
+        if include_virtual:
+            devices.extend(self.virtual_devices())
+
+        return devices
+
+    # ---------------- Уровень 1: Нативный usbmux + lockdownd (pymobiledevice3) ----------------
+    def _scan_usbmux_native(
+        self, win32_entries: list[AppleUsbWin32Entry]
+    ) -> list[ConnectedDevice]:
+        try:
+            return asyncio.run(self._async_scan_usbmux(win32_entries))
+        except Exception as exc:
+            log.debug("Опрос usbmux не дал ответа: %s", exc)
+            return []
+
+    async def _async_scan_usbmux(
+        self, win32_entries: list[AppleUsbWin32Entry]
+    ) -> list[ConnectedDevice]:
+        from pymobiledevice3 import usbmux
+        from pymobiledevice3.service_connection import ServiceConnection
+
+        mux_devices = await asyncio.wait_for(usbmux.list_devices(), timeout=1.8)
+        found: list[ConnectedDevice] = []
+
+        for mux_dev in mux_devices:
+            if not getattr(mux_dev, "is_usb", True):
+                continue
+            serial = str(getattr(mux_dev, "serial", "") or "").strip()
+            if not serial:
+                continue
+
+            info: dict[str, Any] = {}
+            mode = "normal"
+            conn = None
+            try:
+                conn = await asyncio.wait_for(
+                    ServiceConnection.create_using_usbmux(
+                        serial, LOCKDOWN_PORT, connection_type="USB"
+                    ),
+                    timeout=1.5,
+                )
+                qtype = await asyncio.wait_for(
+                    conn.send_recv_plist(
+                        {"Label": "AppleFlashStudio", "Request": "QueryType"}
+                    ),
+                    timeout=1.0,
+                )
+                if qtype.get("Type") == "com.apple.mobile.restored":
+                    mode = "restore"
+                else:
+                    for key in (
+                        "DeviceName",
+                        "ProductType",
+                        "ProductVersion",
+                        "BuildVersion",
+                        "UniqueChipID",
+                        "ChipID",
+                        "BoardId",
+                        "HardwareModel",
+                        "SerialNumber",
+                    ):
+                        resp = await asyncio.wait_for(
+                            conn.send_recv_plist(
+                                {
+                                    "Label": "AppleFlashStudio",
+                                    "Request": "GetValue",
+                                    "Key": key,
+                                }
+                            ),
+                            timeout=0.8,
+                        )
+                        if "Value" in resp and resp["Value"] is not None:
+                            info[key] = resp["Value"]
+            except Exception as exc:
+                log.debug("Не удалось прочитать ключи lockdownd для %s: %s", serial, exc)
+            finally:
+                if conn is not None:
+                    try:
+                        await conn.close()
+                    except Exception:
+                        pass
+
+            pt = str(info.get("ProductType") or "") or None
+            cpid_raw = info.get("ChipID")
+            bdid_raw = info.get("BoardId")
+            cpid = int(cpid_raw) if isinstance(cpid_raw, int) else None
+            bdid = int(bdid_raw) if isinstance(bdid_raw, int) else None
+            ecid = _norm_hex_ecid(info.get("UniqueChipID"))
+            hw_model = str(info.get("HardwareModel") or "") or None
+
+            # Подтягиваем имя драйвера Windows из снимка SetupAPI, если доступно
+            win_drv = self._match_win32_driver(win32_entries, udid=serial, ecid=ecid, mode="normal")
+
+            found.append(
+                ConnectedDevice(
+                    uid=serial,
+                    mode=mode,
+                    product_type=pt,
+                    marketing_name=resolve_product_name(pt, cpid, bdid),
+                    family=infer_device_family(pt, cpid),
+                    ecid=ecid,
+                    udid=serial,
+                    cpid=cpid,
+                    bdid=bdid,
+                    board_config=hw_model,
+                    os_version=str(info.get("ProductVersion") or "") or None,
+                    build_version=str(info.get("BuildVersion") or "") or None,
+                    serial_number=str(info.get("SerialNumber") or "") or None,
+                    device_name=str(info.get("DeviceName") or "") or None,
+                    usb_driver=win_drv or "usbmuxd (Apple USB)",
+                    source_backend="pymobiledevice3 (usbmux)",
+                )
+            )
+        return found
+
+    # ---------------- Уровень 2: DFU / Recovery через libusb-1.0 + IRecv ----------------
+    def _scan_irecv_libusb(
+        self, win32_entries: list[AppleUsbWin32Entry]
+    ) -> list[ConnectedDevice]:
+        found: list[ConnectedDevice] = []
+        try:
+            import usb.core
+            from usb.util import dispose_resources
+
+            usb_devs = list(usb.core.find(find_all=True, idVendor=0x05AC) or [])
+        except Exception as exc:
+            log.debug("pyusb scan недоступен: %s", exc)
+            return found
+
+        boot_devs = [
+            d
+            for d in usb_devs
+            if classify_apple_pid(int(getattr(d, "idProduct", 0))) in {"dfu", "recovery", "wtf"}
+        ]
+        if not boot_devs:
+            return found
+
+        # Пробуем прочитать полные параметры через IRecv (и обязательно освобождаем дескриптор!)
+        try:
+            from pymobiledevice3.irecv import IRecv
+
+            irecv = IRecv(timeout=0.25)
+            try:
+                mode_val = irecv.mode.value
+                mode_str = classify_apple_pid(mode_val) or "recovery"
+                cpid = irecv.chip_id
+                bdid = irecv.board_id
+                ecid_hex = f"0x{irecv.ecid:X}"
+                srnm = irecv.srnm or None
+
+                pt: str | None = None
+                hw_model: str | None = None
+                disp_name: str | None = None
+                try:
+                    pt = irecv.product_type
+                    hw_model = irecv.hardware_model
+                    disp_name = irecv.display_name
+                except Exception:
+                    pt, hw_model, disp_name = lookup_hardware_by_cpid_bdid(cpid, bdid)
+
+                marketing = resolve_product_name(pt, cpid, bdid) if pt else (disp_name or resolve_product_name(None, cpid, bdid))
+                win_drv = self._match_win32_driver(win32_entries, udid=None, ecid=ecid_hex, mode=mode_str)
+
+                found.append(
+                    ConnectedDevice(
+                        uid=ecid_hex,
+                        mode=mode_str,
+                        product_type=pt,
+                        marketing_name=marketing,
+                        family=infer_device_family(pt, cpid),
+                        ecid=ecid_hex,
+                        cpid=cpid,
+                        bdid=bdid,
+                        board_config=hw_model,
+                        serial_number=srnm,
+                        usb_driver=win_drv or "libusb-1.0 (готов к прошивке)",
+                        usb_pid=mode_val,
+                        source_backend="pymobiledevice3 (IRecv / libusb)",
+                    )
+                )
+            finally:
+                if getattr(irecv, "_device", None) is not None:
+                    try:
+                        dispose_resources(irecv._device)
+                    except Exception:
+                        pass
+        except Exception as exc:
+            log.debug("IRecv не смог открыть USB-интерфейс напрямую (%s) — сработает уровень SetupAPI", exc)
+
+        # Освобождаем ссылки pyusb
+        for d in usb_devs:
+            try:
+                from usb.util import dispose_resources
+
+                dispose_resources(d)
+            except Exception:
+                pass
+
+        return found
+
+    # ---------------- Уровень 3: Нативный Win32 SetupAPI (ловит устройства без драйверов) ----------------
+    def _scan_win32_unmatched(
+        self,
+        win32_entries: list[AppleUsbWin32Entry],
+        seen_ecids: set[str],
+        seen_udids: set[str],
+    ) -> list[ConnectedDevice]:
+        if not win32_entries:
+            return []
+
+        amds_installed, amds_running, _ = probe_amds_windows()
+        found: list[ConnectedDevice] = []
+
+        for entry in win32_entries:
+            ecid_norm = _norm_hex_ecid(entry.ecid)
+            udid_norm = entry.udid.lower() if entry.udid else None
+            if ecid_norm and ecid_norm in seen_ecids:
+                continue
+            if udid_norm and udid_norm in seen_udids:
+                continue
+
+            pt, hw_model, disp_name = lookup_hardware_by_cpid_bdid(entry.cpid, entry.bdid)
+            family = infer_device_family(pt, entry.cpid)
+            if family == "unknown" and entry.mode == "normal":
+                if entry.pid == 0x12AB or "ipad" in entry.description.lower():
+                    family = "ipad"
+                else:
+                    family = "iphone"
+
+            marketing = (
+                resolve_product_name(pt, entry.cpid, entry.bdid)
+                if (pt or entry.cpid)
+                else (
+                    "iPad (подключён по USB)"
+                    if family == "ipad"
+                    else "iPhone / iPad (подключён по USB)"
+                )
+            )
+            if disp_name and not pt:
+                marketing = disp_name
+
+            drv_upper = (entry.service or "").upper()
+            warning: str | None = None
+            if entry.mode == "normal":
+                if not amds_installed:
+                    warning = (
+                        "Устройство подключено к USB, но в Windows не установлен драйвер Apple Mobile Device Service. "
+                        "Установите «Устройства Apple» из Microsoft Store (кнопка ниже), чтобы прочитать модель и начать прошивку."
+                    )
+                elif not amds_running:
+                    warning = (
+                        "Служба Apple Mobile Device Service остановлена в Windows. "
+                        "Переподключите кабель или запустите службу на вкладке «Драйверы и USB»."
+                    )
+                else:
+                    warning = (
+                        "Устройство обнаружено по USB — разблокируйте экран телефона и подтвердите «Доверять», если появится запрос."
+                    )
+            elif entry.mode in {"dfu", "recovery", "wtf"}:
+                if not drv_upper:
+                    warning = (
+                        f"Устройство в режиме {entry.mode.upper()}, но Windows не назначила ему USB-драйвер. "
+                        "Установите драйвер Apple USB или WinUSB (Zadig) на вкладке «Драйверы и USB»."
+                    )
+                elif "USBAAPL" in drv_upper:
+                    warning = (
+                        f"Устройство обнаружено в режиме {entry.mode.upper()} (драйвер {entry.service}). "
+                        "Для прямой прошивки через libusb на Windows замените драйвер DFU/Recovery на WinUSB через утилиту Zadig (вкладка «Драйверы и USB»)."
+                    )
+
+            uid = ecid_norm or entry.udid or entry.instance_id
+            found.append(
+                ConnectedDevice(
+                    uid=uid,
+                    mode=entry.mode,
+                    product_type=pt,
+                    marketing_name=marketing,
+                    family=family,
+                    ecid=ecid_norm,
+                    udid=entry.udid,
+                    cpid=entry.cpid,
+                    bdid=entry.bdid,
+                    board_config=hw_model,
+                    serial_number=entry.serial_number,
+                    usb_driver=entry.service or "Нет драйвера Windows",
+                    usb_pid=entry.pid,
+                    driver_warning=warning,
+                    source_backend="Windows USB (SetupAPI)",
+                )
+            )
+        return found
+
+    @staticmethod
+    def _match_win32_driver(
+        entries: list[AppleUsbWin32Entry],
+        *,
+        udid: str | None,
+        ecid: str | None,
+        mode: str,
+    ) -> str | None:
+        norm_ecid = _norm_hex_ecid(ecid)
+        norm_udid = udid.lower() if udid else None
+        for e in entries:
+            if norm_ecid and _norm_hex_ecid(e.ecid) == norm_ecid and e.service:
+                return e.service
+            if norm_udid and e.udid and e.udid.lower() == norm_udid and e.service:
+                return e.service
+        for e in entries:
+            if e.mode == mode and e.service:
+                return e.service
+        return None
+
+    # ---------------- Резерв: внешние утилиты libimobiledevice ----------------
+    def _find_tool(self, name: str) -> str | None:
         exe = f"{name}.exe" if sys.platform == "win32" else name
         if self.tools_dir:
-            candidates.append(self.tools_dir / exe)
-            candidates.append(self.tools_dir / name)
-        found = next((str(p) for p in candidates if p.is_file()), None)
-        if found:
-            return found
-        return shutil.which(name)
+            cand = self.tools_dir / exe
+            if cand.is_file():
+                return str(cand)
+        return shutil.which(exe) or shutil.which(name)
 
-    def scan(self) -> list[ConnectedDevice]:
-        devices_by_key: dict[str, ConnectedDevice] = {}
-
-        # 1. libimobiledevice Normal Mode (idevice_id + ideviceinfo)
-        for dev in self._scan_idevice_normal():
-            key = (dev.ecid or dev.udid or dev.uid).lower()
-            devices_by_key[key] = dev
-
-        # 2. pymobiledevice3 usbmux list (если установлен и ещё не найдено через ideviceinfo)
-        for dev in self._scan_pymobiledevice3():
-            key = (dev.ecid or dev.udid or dev.uid).lower()
-            if key not in devices_by_key:
-                devices_by_key[key] = dev
-
-        # 3. irecovery (Recovery / DFU)
-        irec_dev = self._scan_irecovery()
-        if irec_dev:
-            key = (irec_dev.ecid or irec_dev.uid).lower()
-            devices_by_key[key] = irec_dev
-
-        # 4. Нативный Windows PnP (VID_05AC) — дополняет драйвер или находит голый DFU без утилит
-        if sys.platform == "win32":
-            for pnp_dev in self._scan_windows_pnp():
-                key = (pnp_dev.ecid or pnp_dev.uid).lower()
-                if key in devices_by_key:
-                    if not devices_by_key[key].usb_driver and pnp_dev.usb_driver:
-                        devices_by_key[key].usb_driver = pnp_dev.usb_driver
-                elif pnp_dev.mode != "normal" or not devices_by_key:
-                    devices_by_key[key] = pnp_dev
-
-        # 5. Виртуальный стенд (если включён пользователем)
-        if self._active_virtual_key and self._active_virtual_key in VIRTUAL_PRESETS:
-            virt = VIRTUAL_PRESETS[self._active_virtual_key]
-            devices_by_key[f"virtual:{self._active_virtual_key}"] = virt
-
-        return list(devices_by_key.values())
-
-    def _run_quiet(self, cmd: list[str], timeout: float = 4.0) -> subprocess.CompletedProcess[str] | None:
+    def _scan_libimobiledevice(self) -> list[ConnectedDevice]:
+        idevice_id = self._find_tool("idevice_id")
+        ideviceinfo = self._find_tool("ideviceinfo")
+        if not idevice_id:
+            return []
+        found: list[ConnectedDevice] = []
         try:
-            return subprocess.run(
-                cmd,
+            proc = subprocess.run(
+                [idevice_id, "-l"],
                 capture_output=True,
                 text=True,
-                encoding="utf-8",
-                errors="replace",
-                timeout=timeout,
+                timeout=2,
                 check=False,
                 **windows_no_window_kwargs(),
             )
+            udids = [ln.strip() for ln in proc.stdout.splitlines() if ln.strip()]
+            for udid in udids:
+                kv: dict[str, str] = {}
+                if ideviceinfo:
+                    inf = subprocess.run(
+                        [ideviceinfo, "-u", udid],
+                        capture_output=True,
+                        text=True,
+                        timeout=3,
+                        check=False,
+                        **windows_no_window_kwargs(),
+                    )
+                    for line in inf.stdout.splitlines():
+                        if ":" in line:
+                            k, _, v = line.partition(":")
+                            kv[k.strip()] = v.strip()
+                pt = kv.get("ProductType")
+                ecid = _norm_hex_ecid(kv.get("UniqueChipID"))
+                found.append(
+                    ConnectedDevice(
+                        uid=udid,
+                        mode="normal",
+                        product_type=pt,
+                        marketing_name=resolve_product_name(pt),
+                        family=infer_device_family(pt),
+                        ecid=ecid,
+                        udid=udid,
+                        board_config=kv.get("HardwareModel"),
+                        os_version=kv.get("ProductVersion"),
+                        build_version=kv.get("BuildVersion"),
+                        serial_number=kv.get("SerialNumber"),
+                        device_name=kv.get("DeviceName"),
+                        usb_driver="libimobiledevice",
+                        source_backend="libimobiledevice",
+                    )
+                )
         except (OSError, subprocess.SubprocessError):
-            return None
-
-    def _scan_idevice_normal(self) -> list[ConnectedDevice]:
-        idevice_id_bin = self.resolve_binary("idevice_id")
-        ideviceinfo_bin = self.resolve_binary("ideviceinfo")
-        if not idevice_id_bin or not ideviceinfo_bin:
-            return []
-        res = self._run_quiet([idevice_id_bin, "-l"])
-        if not res or res.returncode != 0:
-            return []
-        found: list[ConnectedDevice] = []
-        for raw_udid in res.stdout.splitlines():
-            udid = raw_udid.strip()
-            if not udid:
-                continue
-            info_res = self._run_quiet([ideviceinfo_bin, "-u", udid, "-x"])
-            info: dict[str, Any] = {}
-            if info_res and info_res.returncode == 0 and info_res.stdout.strip():
-                try:
-                    info = plistlib.loads(info_res.stdout.encode("utf-8", errors="ignore"))
-                except Exception:
-                    info = {}
-            pt = str(info.get("ProductType") or "").strip() or None
-            ecid_raw = info.get("UniqueChipID")
-            ecid = f"0x{int(ecid_raw):X}" if isinstance(ecid_raw, int) else None
-            spec = SPECS_BY_PRODUCT_TYPE.get(pt or "")
-            cpid = spec.cpid if spec else None
-            found.append(
-                ConnectedDevice(
-                    uid=udid,
-                    mode="normal",
-                    product_type=pt,
-                    marketing_name=resolve_product_name(pt, cpid),
-                    family=infer_device_family(pt, cpid),
-                    ecid=ecid,
-                    udid=udid,
-                    cpid=cpid,
-                    board_config=str(info.get("HardwareModel") or "").strip() or None,
-                    os_version=str(info.get("ProductVersion") or "").strip() or None,
-                    build_version=str(info.get("BuildVersion") or "").strip() or None,
-                    serial_number=str(info.get("SerialNumber") or "").strip() or None,
-                    device_name=str(info.get("DeviceName") or "").strip() or None,
-                    source_backend="libimobiledevice",
-                )
-            )
+            pass
         return found
 
-    def _scan_pymobiledevice3(self) -> list[ConnectedDevice]:
-        base = resolve_pmb3_command(self.tools_dir)
-        if not base:
-            return []
-        cmd = [*base, "usbmux", "list", "--no-color"]
-        res = self._run_quiet(cmd, timeout=5.0)
-        if not res or res.returncode != 0 or not res.stdout.strip():
-            return []
-        try:
-            items = json.loads(res.stdout)
-        except json.JSONDecodeError:
-            return []
-        if not isinstance(items, list):
-            return []
-        found: list[ConnectedDevice] = []
-        for entry in items:
-            if not isinstance(entry, dict):
-                continue
-            if str(entry.get("ConnectionType") or "USB").upper() != "USB":
-                continue
-            udid = str(entry.get("UniqueDeviceID") or entry.get("Identifier") or "").strip()
-            if not udid:
-                continue
-            pt = str(entry.get("ProductType") or "").strip() or None
-            spec = SPECS_BY_PRODUCT_TYPE.get(pt or "")
-            cpid = spec.cpid if spec else None
-            found.append(
-                ConnectedDevice(
-                    uid=udid,
-                    mode="normal",
-                    product_type=pt,
-                    marketing_name=resolve_product_name(pt, cpid),
-                    family=infer_device_family(pt, cpid),
-                    udid=udid,
-                    cpid=cpid,
-                    os_version=str(entry.get("ProductVersion") or "").strip() or None,
-                    build_version=str(entry.get("BuildVersion") or "").strip() or None,
-                    device_name=str(entry.get("DeviceName") or "").strip() or None,
-                    source_backend="pymobiledevice3",
-                )
-            )
-        return found
-
-    def _scan_irecovery(self) -> ConnectedDevice | None:
-        irec = self.resolve_binary("irecovery")
-        if not irec:
-            return None
-        res = self._run_quiet([irec, "-q"])
-        if not res or res.returncode != 0:
-            return None
-        return parse_irecovery_output(res.stdout)
-
-    def _scan_windows_pnp(self) -> list[ConnectedDevice]:
-        ps = shutil.which("powershell")
-        if not ps:
-            return []
-        ps_cmd = (
-            "Get-CimInstance Win32_PnPEntity | "
-            "Where-Object { $_.PNPDeviceID -like '*VID_05AC*' } | "
-            "Select-Object Name, PNPDeviceID, Service, Status | ConvertTo-Json -Compress"
-        )
-        res = self._run_quiet([ps, "-NoProfile", "-NonInteractive", "-Command", ps_cmd], timeout=5.0)
-        if not res or res.returncode != 0:
-            return []
-        return parse_windows_pnp_apple_Output(res.stdout)
+    @staticmethod
+    def virtual_devices() -> list[ConnectedDevice]:
+        """Тестовые профили (используются только в модульных автотестах при include_virtual=True)."""
+        return [
+            ConnectedDevice(
+                uid="00008130-001A2B3C4D5E6F01",
+                mode="normal",
+                product_type="iPhone16,1",
+                marketing_name="iPhone 15 Pro",
+                family="iphone",
+                ecid="0x1A2B3C4D5E6F01",
+                udid="00008130-001A2B3C4D5E6F01",
+                cpid=0x8130,
+                board_config="D83AP",
+                os_version="18.2",
+                build_version="22C152",
+                serial_number="F2LTEST15PRO",
+                device_name="iPhone 15 Pro",
+                battery_percent=84,
+                usb_driver="usbmuxd",
+                source_backend="virtual",
+                is_virtual=True,
+            ),
+            ConnectedDevice(
+                uid="0x00813299AABBCC02",
+                mode="recovery",
+                product_type="iPad16,3",
+                marketing_name="iPad Pro 11\" (M4, Wi-Fi)",
+                family="ipad",
+                ecid="0x00813299AABBCC02",
+                cpid=0x8132,
+                board_config="J717AP",
+                os_version="18.2",
+                usb_driver="WinUSB",
+                source_backend="virtual",
+                is_virtual=True,
+            ),
+            ConnectedDevice(
+                uid="0x008122FFEEDDCC03",
+                mode="dfu",
+                product_type="Mac15,3",
+                marketing_name="MacBook Pro 14\" (M3, 2023)",
+                family="macbook",
+                ecid="0x008122FFEEDDCC03",
+                cpid=0x8122,
+                bdid=0x22,
+                board_config="J504AP",
+                usb_driver="WinUSB",
+                source_backend="virtual",
+                is_virtual=True,
+            ),
+        ]

@@ -43,7 +43,7 @@ class HistoryPage(QWidget):
         box.addWidget(make_title("Журнал операций", object_name="PageTitle"))
         box.addWidget(
             make_muted(
-                "Все запуски прошивок, команд Recovery и репетиций Dry-Run с полным протоколом консоли."
+                "История выполненных прошивок и сервисных команд USB с подробным протоколом."
             )
         )
         head.addLayout(box, 1)
@@ -98,9 +98,9 @@ class HistoryPage(QWidget):
                 s.device_title,
                 FLASH_ACTION_LABELS.get(s.action, s.action),
                 f"{s.ipsw_name or '—'} ({s.ipsw_build or '—'})" if s.ipsw_name else "—",
-                "Dry-Run" if s.dry_run else "Боевой",
+                "Проверка" if s.dry_run else "Прошивка",
                 s.backend,
-                f"{s.status} (код {s.exit_code})",
+                "Успешно" if s.status == "success" else f"Ошибка (код {s.exit_code})",
             ]
             for c, val in enumerate(vals):
                 self.table.setItem(idx, c, QTableWidgetItem(val))

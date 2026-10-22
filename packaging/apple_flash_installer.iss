@@ -6,7 +6,7 @@
 
 #define AppName "Apple Flash Studio"
 #ifndef AppVersion
-  #define AppVersion "1.0.0"
+  #define AppVersion "2.0.0"
 #endif
 #define AppPublisher "Apple Flash Studio"
 #define AppExeName "AppleFlashStudio.exe"

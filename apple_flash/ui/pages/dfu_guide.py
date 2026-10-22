@@ -49,17 +49,16 @@ class DfuGuidePage(QWidget):
         content = QWidget(scroll)
         scroll.setWidget(content)
         layout = QVBoxLayout(content)
-        layout.setSizeConstraint(QVBoxLayout.SetMinAndMaxSize)
         layout.setContentsMargins(22, 16, 22, 16)
         layout.setSpacing(12)
 
         head = QHBoxLayout()
         vbox = QVBoxLayout()
         vbox.setSpacing(2)
-        vbox.addWidget(make_title("Мастер перевода в DFU и Recovery", object_name="PageTitle"))
+        vbox.addWidget(make_title("Как перевести устройство в Recovery или DFU", object_name="PageTitle"))
         vbox.addWidget(
             make_muted(
-                "Точный секундомер удержания клавиш и карта сервисных портов DFU USB-C для MacBook M1–M4 и T2."
+                "Выберите вашу модель ниже — секундомер подскажет, сколько секунд удерживать каждую кнопку."
             )
         )
         head.addLayout(vbox, 1)

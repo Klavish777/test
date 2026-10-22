@@ -6,7 +6,7 @@
     powershell -ExecutionPolicy Bypass -File scripts\build_apple_flash_windows.ps1 -Version 1.0.0
 #>
 param(
-    [string]$Version = "1.0.0",
+    [string]$Version = "2.0.0",
     [switch]$SkipTests,
     [switch]$UseCurrentPython
 )
@@ -65,7 +65,10 @@ if ($LASTEXITCODE -ne 0) { throw "PyInstaller завершился с ошибк
 
 $exe = Join-Path $root "dist\AppleFlashStudio\AppleFlashStudio.exe"
 if (-not (Test-Path $exe)) { throw "EXE не создан: $exe" }
-Write-Host "Портативная сборка готова: $exe" -ForegroundColor Green
+Write-Host "Самодиагностика встроенного движка внутри собранного EXE (pymobiledevice3 + libusb-1.0 + Win32 SetupAPI)..." -ForegroundColor Cyan
+& $exe --check-runtime
+if ($LASTEXITCODE -ne 0) { throw "Встроенный движок USB/прошивки внутри AppleFlashStudio.exe не прошёл проверку (код $LASTEXITCODE)." }
+Write-Host "Портативная сборка проверена и готова: $exe" -ForegroundColor Green
 
 $outDir = Join-Path $root "installer\Output"
 New-Item -ItemType Directory -Force -Path $outDir | Out-Null

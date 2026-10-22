@@ -8,25 +8,27 @@ from pathlib import Path
 from apple_flash.data.apple_catalog import CHIP_BY_CPID, FAMILY_LABELS, resolve_product_name
 
 MODE_LABELS: dict[str, str] = {
-    "normal": "Обычный режим (Normal / USBMux)",
-    "recovery": "Режим восстановления (Recovery · iBoot)",
-    "dfu": "Режим DFU (BootROM · 05ac:1227)",
-    "wtf": "Режим WTF (05ac:1222)",
+    "normal": "Обычный режим (система запущена)",
+    "recovery": "Режим восстановления (Recovery)",
+    "dfu": "Режим прошивки DFU",
+    "restore": "Идёт установка прошивки (Restore)",
+    "wtf": "Сервисный режим WTF",
 }
 
 FLASH_ACTION_LABELS: dict[str, str] = {
-    "update": "Обновление с сохранением данных (Update)",
-    "erase": "Чистая перепрошивка со стиранием (Clean Restore)",
-    "revive_mac": "Оживление MacBook без удаления данных (Revive DFU)",
+    "update": "Обновление с сохранением данных",
+    "erase": "Чистая прошивка со сбросом данных",
+    "revive_mac": "Оживление MacBook без удаления данных (Revive)",
     "exit_recovery": "Выход из режима Recovery",
     "enter_recovery": "Перевод устройства в режим Recovery",
+    "reboot": "Перезагрузка устройства",
 }
 
 
 @dataclass
 class ConnectedDevice:
     uid: str  # UDID или ECID
-    mode: str  # normal | recovery | dfu | wtf
+    mode: str  # normal | recovery | dfu | restore | wtf
     product_type: str | None = None
     marketing_name: str = "Устройство Apple"
     family: str = "unknown"  # iphone | ipad | macbook | unknown
@@ -41,6 +43,8 @@ class ConnectedDevice:
     device_name: str | None = None
     battery_percent: int | None = None
     usb_driver: str | None = None
+    usb_pid: int | None = None
+    driver_warning: str | None = None
     source_backend: str = "usb"
     is_virtual: bool = False
 
@@ -56,14 +60,16 @@ class ConnectedDevice:
     def chip_label(self) -> str:
         if self.cpid is not None:
             name = CHIP_BY_CPID.get(self.cpid)
-            return f"{name} (0x{self.cpid:04X})" if name else f"0x{self.cpid:04X}"
+            return name if name else f"CPID 0x{self.cpid:04X}"
         return "—"
 
     @property
     def display_title(self) -> str:
-        base = self.marketing_name or resolve_product_name(self.product_type, self.cpid)
+        base = self.marketing_name or resolve_product_name(
+            self.product_type, self.cpid, self.bdid
+        )
         if self.is_virtual:
-            return f"[МАКЕТ] {base}"
+            return f"[Тест] {base}"
         return base
 
 
@@ -100,7 +106,7 @@ class IpswRecord:
     build_version: str
     supported_products: list[str] = field(default_factory=list)
     supported_cpids: list[int] = field(default_factory=list)
-    board_configs: list[str] = field(default_factory=list)
+    board_configs: list[int | str] = field(default_factory=list)
     has_erase: bool = True
     has_upgrade: bool = True
     sha256: str | None = None
@@ -151,12 +157,12 @@ class DriverCheckItem:
 
 @dataclass
 class FlashJobConfig:
-    action: str  # update | erase | revive_mac | exit_recovery | enter_recovery
+    action: str  # update | erase | revive_mac | exit_recovery | enter_recovery | reboot
     device: ConnectedDevice | None = None
     ipsw_path: Path | None = None
     shsh_path: Path | None = None
     backend: str = "auto"  # auto | pymobiledevice3 | idevicerestore
-    dry_run: bool = True
+    dry_run: bool = False
     custom_tools_dir: Path | None = None
 
 

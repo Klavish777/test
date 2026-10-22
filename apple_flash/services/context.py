@@ -7,6 +7,7 @@ from pathlib import Path
 from apple_flash.core.logging_setup import setup_logging
 from apple_flash.core.paths import StudioPaths
 from apple_flash.core.security import compute_hashes
+from apple_flash.core.usb_runtime import initialize_runtime
 from apple_flash.data.store import StudioStore
 from apple_flash.services.device_detector import DeviceDetector
 from apple_flash.services.driver_diagnostics import DriverDiagnostics
@@ -18,6 +19,7 @@ class StudioContext:
     """Контейнер состояния, хранилища и всех сервисов приложения."""
 
     def __init__(self, paths: StudioPaths, store: StudioStore) -> None:
+        initialize_runtime()
         self.paths = paths
         self.store = store
         custom_tools = store.get_setting("custom_tools_dir", "").strip()
@@ -37,17 +39,22 @@ class StudioContext:
         cls,
         data_dir: Path | str | None = None,
         *,
-        seed_demo: bool = True,
+        seed_demo: bool = False,
         verbose: bool = False,
     ) -> StudioContext:
+        initialize_runtime()
         paths = StudioPaths.create(data_dir)
         setup_logging(paths.logs_dir, verbose=verbose)
         store = StudioStore(paths.db_file)
         ctx = cls(paths, store)
 
-        if seed_demo and store.get_setting("demo_seeded", "") != "1":
+        # Миграция с v1.0: автоматически удаляем старые учебные DEMO_*.ipsw из базы пользователя
+        if not seed_demo and store.get_setting("v2_demo_purged", "") != "1":
+            ctx.remove_demo_mockups()
+            store.set_setting("v2_demo_purged", "1")
+
+        if seed_demo:
             ctx.install_demo_mockups()
-            store.set_setting("demo_seeded", "1")
         return ctx
 
     def update_tools_dir(self, path_str: str) -> None:
@@ -59,7 +66,7 @@ class StudioContext:
         self.flash_engine.default_tools_dir = eff
 
     def install_demo_mockups(self) -> int:
-        """Создаёт и регистрирует 3 учебных макета .ipsw (iPhone, iPad, MacBook) с расчётом SHA-256."""
+        """Используется только в модульных автотестах при явном вызове."""
         demo_dir = self.paths.ipsw_dir / "demo_mockups"
         files = create_demo_ipsw_bundle(demo_dir)
         for path in files:
@@ -70,7 +77,7 @@ class StudioContext:
                 sha256=sha256,
                 sha1=sha1,
                 expected_hash=sha256,
-                notes="Демонстрационный макет IPSW для проверки интерфейса и режима Dry-Run.",
+                notes="Тестовый архив IPSW.",
             )
         return len(files)
 

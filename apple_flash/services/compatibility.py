@@ -92,10 +92,10 @@ def evaluate_compatibility(
     if device is None:
         return CompatibilityVerdict(
             "warning",
-            "Устройство не выбрано — доступна только проверка образа",
+            "Устройство не подключено — проверен только файл прошивки",
             details
             + [
-                "Подключите iPhone, iPad или MacBook по USB (или выберите виртуальный макет для Dry-Run)."
+                "Подключите iPhone, iPad или MacBook кабелем USB, чтобы сверить точную модель устройства."
             ],
         )
 

@@ -1,4 +1,4 @@
-"""Точка входа CLI и запуск QApplication для Apple Flash Studio."""
+"""Точка входа CLI и запуск QApplication для Apple Flash Studio v2.0."""
 
 from __future__ import annotations
 
@@ -6,6 +6,7 @@ import argparse
 import sys
 from pathlib import Path
 
+from apple_flash.core.usb_runtime import check_runtime_health, initialize_runtime
 from apple_flash.services.context import StudioContext
 from apple_flash.version import APP_NAME, APP_VERSION
 
@@ -13,7 +14,7 @@ from apple_flash.version import APP_NAME, APP_VERSION
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         prog="apple-flash-studio",
-        description=f"{APP_NAME} v{APP_VERSION} — перепрошивка и восстановление iPhone, iPad и MacBook на Windows",
+        description=f"{APP_NAME} v{APP_VERSION} — прошивка и восстановление iPhone, iPad и MacBook на Windows 10/11",
     )
     parser.add_argument(
         "--data-dir",
@@ -24,17 +25,17 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "--no-demo",
         action="store_true",
-        help="Не устанавливать демонстрационные макеты .ipsw при первом запуске",
-    )
-    parser.add_argument(
-        "--reset-demo",
-        action="store_true",
-        help="Пересоздать демонстрационные макеты .ipsw",
+        help="Совместимость с CI (в v2.0 макеты отключены по умолчанию)",
     )
     parser.add_argument(
         "--check",
         action="store_true",
-        help="Проверить целостность базы SQLite и сервисов (без открытия окна) и завершиться с кодом 0/1",
+        help="Проверить целостность базы SQLite и завершиться с кодом 0/1",
+    )
+    parser.add_argument(
+        "--check-runtime",
+        action="store_true",
+        help="Проверить встроенный движок pymobiledevice3, libusb-1.0, сертификаты TSS и Win32 SetupAPI",
     )
     parser.add_argument(
         "--export-ico",
@@ -46,19 +47,38 @@ def build_parser() -> argparse.ArgumentParser:
         "--screenshot",
         type=Path,
         default=None,
-        help="Сохранить PNG-снимки всех страниц интерфейса в указанный каталог и выйти",
+        help="Сохранить PNG-снимки всех вкладок интерфейса в указанный каталог и выйти",
     )
     parser.add_argument("--verbose", action="store_true", help="Подробное логирование")
     return parser
 
 
 def main(argv: list[str] | None = None) -> int:
+    initialize_runtime()
     args = build_parser().parse_args(argv)
+
+    if args.check_runtime:
+        health = check_runtime_health()
+        all_ok = True
+        for key, (ok, detail) in health.items():
+            mark = "OK" if ok else "FAIL"
+            try:
+                sys.__stdout__.write(f"[{mark}] {key}: {detail}\n")  # type: ignore[union-attr]
+            except Exception:
+                pass
+            if key in {"pymobiledevice3", "libusb"} and not ok:
+                all_ok = False
+            if sys.platform == "win32" and key == "win32_setupapi" and not ok:
+                all_ok = False
+        ctx = StudioContext.create(args.data_dir, seed_demo=False, verbose=args.verbose)
+        db_ok = ctx.store.integrity_ok()
+        ctx.close()
+        return 0 if (all_ok and db_ok) else 1
 
     if args.check:
         ctx = StudioContext.create(
             args.data_dir,
-            seed_demo=not args.no_demo,
+            seed_demo=False,
             verbose=args.verbose,
         )
         ok = ctx.store.integrity_ok()
@@ -83,13 +103,11 @@ def main(argv: list[str] | None = None) -> int:
 
     ctx = StudioContext.create(
         args.data_dir,
-        seed_demo=not args.no_demo,
+        seed_demo=False,
         verbose=args.verbose,
     )
-    if args.reset_demo:
-        ctx.install_demo_mockups()
 
-    window = AppleFlashMainWindow(ctx)
+    window = AppleFlashMainWindow(ctx, enable_auto_poll=not bool(args.screenshot))
     if args.screenshot:
         window.show()
         return capture_studio_screenshots(app, window, args.screenshot)

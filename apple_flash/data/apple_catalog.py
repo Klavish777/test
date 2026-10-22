@@ -30,6 +30,11 @@ class DfuProcedure:
 
 # Справочник кристаллов Apple Silicon / Bionic / T2 по идентификатору CPID (в DFU/Recovery)
 CHIP_BY_CPID: dict[int, str] = {
+    0x7000: "Apple A8",
+    0x7001: "Apple A8X",
+    0x8000: "Apple A9 (Samsung)",
+    0x8001: "Apple A9X",
+    0x8003: "Apple A9 (TSMC)",
     0x8010: "Apple A10 Fusion",
     0x8011: "Apple A10X Fusion",
     0x8012: "Apple T2 Security Chip",
@@ -41,19 +46,23 @@ CHIP_BY_CPID: dict[int, str] = {
     0x8103: "Apple M1",
     0x6000: "Apple M1 Pro",
     0x6001: "Apple M1 Max",
+    0x6002: "Apple M1 Ultra",
     0x8110: "Apple A15 Bionic",
     0x8112: "Apple M2",
     0x6020: "Apple M2 Pro",
     0x6021: "Apple M2 Max",
+    0x6022: "Apple M2 Ultra",
     0x8120: "Apple A16 Bionic",
     0x8122: "Apple M3",
     0x6030: "Apple M3 Pro",
     0x6031: "Apple M3 Max",
+    0x6034: "Apple M3 Max",
     0x8130: "Apple A17 Pro",
     0x8132: "Apple M4",
     0x6040: "Apple M4 Pro",
     0x6041: "Apple M4 Max",
     0x8140: "Apple A18 / A18 Pro",
+    0x8150: "Apple A19 / A19 Pro",
 }
 
 
@@ -393,15 +402,101 @@ DFU_PROCEDURES: dict[str, DfuProcedure] = {
             "• На всех MacBook Air и MacBook Pro с T2 сервисный порт DFU — ПЕРЕДНИЙ левый порт USB-C (ближайший к трекпаду / пользователю)."
         ),
     ),
+    "iphone_7": DfuProcedure(
+        key="iphone_7",
+        title="iPhone 7 / iPhone 7 Plus (сенсорная кнопка «Домой»)",
+        family="iphone",
+        summary="Для iPhone 7 и 7 Plus используется связка Боковой кнопки питания и кнопки Громкость ВНИЗ (-).",
+        cable_note="Подключите iPhone 7 кабелем Lightning к порту USB на компьютере.",
+        steps=(
+            ("Подключите iPhone кабелем к компьютеру Windows.", 0),
+            ("Одновременно зажмите и удерживайте БОКОВУЮ кнопку питания и кнопку Громкость ВНИЗ (-).", 8),
+            ("Через 8 секунд (когда экран погаснет) отпустите Боковую кнопку, но ПРОДОЛЖАЙТЕ держать Громкость ВНИЗ (-) ещё 10 секунд.", 10),
+            ("Экран останется полностью чёрным — программа определит режим DFU.", 0),
+        ),
+        recovery_steps=(
+            "Зажмите одновременно Боковую кнопку питания и Громкость ВНИЗ (-).",
+            "Держите обе кнопки до появления на экране значка кабеля и компьютера.",
+        ),
+    ),
+    "iphone_6s": DfuProcedure(
+        key="iphone_6s",
+        title="iPhone 6s / 6s Plus / SE (1-го поколения) и старше",
+        family="iphone",
+        summary="Для моделей с механической нажимаемой кнопкой «Домой».",
+        cable_note="Подключите iPhone кабелем Lightning к компьютеру.",
+        steps=(
+            ("Подключите iPhone кабелем к компьютеру Windows.", 0),
+            ("Одновременно зажмите и удерживайте кнопку питания и механическую кнопку «Домой» (Home).", 8),
+            ("Через 8 секунд отпустите кнопку питания, но ПРОДОЛЖАЙТЕ удерживать кнопку «Домой» ещё 10 секунд.", 10),
+            ("Экран останется чёрным — iPhone перешёл в режим DFU.", 0),
+        ),
+        recovery_steps=(
+            "Зажмите одновременно кнопку питания и кнопку «Домой».",
+            "Не отпускайте кнопки до появления экрана восстановления с кабелем.",
+        ),
+    ),
 }
 
 
-def resolve_product_name(product_type: str | None, cpid: int | None = None) -> str:
-    """Возвращает человекочитаемое имя модели по коду ProductType или идентификатору кристалла CPID."""
+def _load_irecv_indexes() -> tuple[
+    dict[str, tuple[str, str | None, int | None]],
+    dict[tuple[int, int], tuple[str, str, str]],
+]:
+    """Индексирует 340+ моделей из pymobiledevice3.irecv_devices (если доступна)."""
+    by_product: dict[str, tuple[str, str | None, int | None]] = {}
+    by_cpid_bdid: dict[tuple[int, int], tuple[str, str, str]] = {}
+    try:
+        from pymobiledevice3.irecv_devices import IRECV_DEVICES
+
+        for item in IRECV_DEVICES:
+            pt = getattr(item, "product_type", None)
+            dn = getattr(item, "display_name", None)
+            hm = getattr(item, "hardware_model", None)
+            cpid = getattr(item, "chip_id", None)
+            bdid = getattr(item, "board_id", None)
+            if pt and dn and pt not in by_product:
+                by_product[str(pt)] = (str(dn), str(hm) if hm else None, int(cpid) if cpid is not None else None)
+            if cpid is not None and bdid is not None and pt and dn:
+                key = (int(cpid), int(bdid))
+                if key not in by_cpid_bdid:
+                    by_cpid_bdid[key] = (str(pt), str(hm or ""), str(dn))
+    except Exception:
+        pass
+    return by_product, by_cpid_bdid
+
+
+_IRECV_BY_PRODUCT, _IRECV_BY_CPID_BDID = _load_irecv_indexes()
+
+
+def lookup_hardware_by_cpid_bdid(
+    cpid: int | None,
+    bdid: int | None,
+) -> tuple[str | None, str | None, str | None]:
+    """Возвращает (product_type, board_config, display_name) по паре (CPID, BDID) в режиме DFU/Recovery."""
+    if cpid is None or bdid is None:
+        return None, None, None
+    hit = _IRECV_BY_CPID_BDID.get((int(cpid), int(bdid)))
+    if not hit:
+        return None, None, None
+    pt, hm, dn = hit
+    spec = SPECS_BY_PRODUCT_TYPE.get(pt)
+    return pt, (hm or None), (spec.marketing_name if spec else dn)
+
+
+def resolve_product_name(
+    product_type: str | None,
+    cpid: int | None = None,
+    bdid: int | None = None,
+) -> str:
+    """Возвращает человекочитаемое имя модели по ProductType, (CPID, BDID) или чипу CPID."""
     if product_type:
         spec = SPECS_BY_PRODUCT_TYPE.get(product_type)
         if spec:
             return spec.marketing_name
+        irecv_hit = _IRECV_BY_PRODUCT.get(product_type)
+        if irecv_hit:
+            return irecv_hit[0]
         lower = product_type.lower()
         if lower.startswith("iphone"):
             return f"iPhone ({product_type})"
@@ -410,9 +505,13 @@ def resolve_product_name(product_type: str | None, cpid: int | None = None) -> s
         if lower.startswith(("macbook", "mac")):
             return f"Mac ({product_type})"
         if lower.startswith("ibridge"):
-            return f"Mac T2 Security Chip ({product_type})"
+            return f"Mac с чипом Apple T2 ({product_type})"
+    if cpid is not None and bdid is not None:
+        _, _, dn = lookup_hardware_by_cpid_bdid(cpid, bdid)
+        if dn:
+            return dn
     if cpid is not None and cpid in CHIP_BY_CPID:
-        return f"Устройство Apple на базе {CHIP_BY_CPID[cpid]}"
+        return f"Устройство Apple ({CHIP_BY_CPID[cpid]})"
     return "Устройство Apple"
 
 

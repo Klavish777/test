@@ -1,4 +1,4 @@
-"""Фоновые рабочие потоки QThread (расчёт SHA-256 больших IPSW и выполнение прошивки без зависания UI)."""
+"""Фоновые рабочие потоки QThread (автопоиск USB-устройств, расчёт SHA-256 и реальная прошивка)."""
 
 from __future__ import annotations
 
@@ -8,7 +8,25 @@ from PySide6.QtCore import QThread, Signal
 
 from apple_flash.core.security import compute_hashes
 from apple_flash.data.models import FlashJobConfig
+from apple_flash.services.device_detector import DeviceDetector
 from apple_flash.services.flash_engine import FlashEngine
+
+
+class DeviceScanWorker(QThread):
+    """Неблокирующий фоновый опрос USB-шины Apple."""
+
+    devices_ready = Signal(object)  # list[ConnectedDevice]
+
+    def __init__(self, detector: DeviceDetector, parent=None) -> None:
+        super().__init__(parent)
+        self.detector = detector
+
+    def run(self) -> None:
+        try:
+            devices = self.detector.scan_devices(include_virtual=False)
+        except Exception:
+            devices = []
+        self.devices_ready.emit(devices)
 
 
 class HashWorker(QThread):
@@ -54,6 +72,7 @@ class FlashWorker(QThread):
 
     def cancel(self) -> None:
         self._cancelled = True
+        self.engine.request_cancel()
 
     def run(self) -> None:
         try:
@@ -62,7 +81,7 @@ class FlashWorker(QThread):
                 progress_cb=lambda pct, stage: self.progress.emit(pct, stage),
                 log_cb=lambda line: self.log_line.emit(line),
                 cancel_check=lambda: self._cancelled,
-                dry_run_step_delay=0.12,
+                dry_run_step_delay=0.05,
             )
             self.finished_session.emit(session)
         except Exception as exc:

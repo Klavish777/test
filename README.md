@@ -2,11 +2,11 @@
 
 В репозитории находятся **два самостоятельных настольных приложения для Windows 10/11 (x64)** на базе Python + PySide6:
 
-1. **[Apple Flash Studio](docs/APPLE_FLASH_STUDIO.md)** — специализированное приложение для локальной перепрошивки и восстановления **iPhone, iPad и MacBook (Apple Silicon M1–M4 и Intel T2)**:
-   - автоопределение USB / Recovery / DFU (`pymobiledevice3`, `libimobiledevice`, Windows PnP `VID_05AC`);
-   - локальная офлайн-библиотека `.ipsw` с мгновенным разбором `BuildManifest.plist` без распаковки архива и проверкой SHA-256 / SHA-1;
-   - режимы **Update** (с сохранением данных), **Clean Restore** (со стиранием), **Revive MacBook DFU**, управление **Recovery** в 1 клик и безопасная репетиция **Dry-Run**;
-   - интерактивный секундомер входа в DFU и схема сервисных DFU-портов MacBook;
+1. **[Apple Flash Studio v2.0](docs/APPLE_FLASH_STUDIO.md)** — самостоятельное приложение на русском языке для обнаружения по USB и реальной прошивки **iPhone, iPad и MacBook (Apple Silicon M1–M4 и Intel T2)**:
+   - встроенный в `.exe` реальный движок `pymobiledevice3` + `libusb-1.0.dll` + база 340+ официальных моделей Apple (не требует установки Python или сторонних скриптов);
+   - живое трёхуровневое автоопределение USB каждые 2.5 секунды (`usbmuxd` без спама запросом «Доверять», `libusb IRecv` для DFU/Recovery и мгновенный нативный `Win32 SetupAPI` для устройств без драйвера);
+   - лаконичный интерфейс без фейковых макетов: устройство слева, выбор локального `.ipsw` (или Drag & Drop) и запуск прошивки справа;
+   - реальные режимы **Обновление (сохранить данные)**, **Чистая прошивка (стереть данные)**, **Revive MacBook DFU**, вход и выход из **Recovery** в 1 клик;
    - запуск на Windows: `run_apple_flash.bat`, сборка `.exe` и установщика: `scripts\build_apple_flash_windows.bat`.
 2. **Smartphone Repair OS** (описание ниже) — универсальная локальная рабочая станция мастера по ремонту смартфонов (каталог устройств, 3D BoardView, Firmware Center, Technical Library).
 
