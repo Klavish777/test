@@ -1,0 +1,34 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net10.0-windows</TargetFramework>
+    <UseWPF>true</UseWPF>
+    <RootNamespace>NexusFirmware.App</RootNamespace>
+    <AssemblyName>NexusFirmwareStudio</AssemblyName>
+    <ApplicationManifest>app.manifest</ApplicationManifest>
+    <EnableWindowsTargeting>true</EnableWindowsTargeting>
+    <SatelliteResourceLanguages>en</SatelliteResourceLanguages>
+    <Description>NEXUS Firmware Studio — рабочее место сервисного инженера.</Description>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="9.0.0" />
+    <PackageReference Include="Serilog" Version="4.2.0" />
+    <PackageReference Include="Serilog.Sinks.File" Version="6.0.0" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="../NexusFirmware.Core/NexusFirmware.Core.csproj" />
+    <ProjectReference Include="../NexusFirmware.Infrastructure/NexusFirmware.Infrastructure.csproj" />
+    <ProjectReference Include="../NexusFirmware.DeviceDetection/NexusFirmware.DeviceDetection.csproj" />
+    <ProjectReference Include="../NexusFirmware.Firmware/NexusFirmware.Firmware.csproj" />
+    <ProjectReference Include="../NexusFirmware.Flashing/NexusFirmware.Flashing.csproj" />
+    <ProjectReference Include="../NexusFirmware.Qualcomm/NexusFirmware.Qualcomm.csproj" />
+    <ProjectReference Include="../NexusFirmware.MediaTek/NexusFirmware.MediaTek.csproj" />
+    <ProjectReference Include="../NexusFirmware.Samsung/NexusFirmware.Samsung.csproj" />
+    <ProjectReference Include="../NexusFirmware.Drivers/NexusFirmware.Drivers.csproj" />
+    <ProjectReference Include="../NexusFirmware.Plugins/NexusFirmware.Plugins.csproj" />
+  </ItemGroup>
+
+</Project>

@@ -1,0 +1,16 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <RootNamespace>NexusFirmware.Flashing</RootNamespace>
+    <Description>NEXUS Firmware Studio — планирование и выполнение операций прошивки с подтверждением.</Description>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="../NexusFirmware.Core/NexusFirmware.Core.csproj" />
+    <ProjectReference Include="../NexusFirmware.Infrastructure/NexusFirmware.Infrastructure.csproj" />
+    <ProjectReference Include="../NexusFirmware.DeviceDetection/NexusFirmware.DeviceDetection.csproj" />
+    <ProjectReference Include="../NexusFirmware.Firmware/NexusFirmware.Firmware.csproj" />
+  </ItemGroup>
+
+</Project>

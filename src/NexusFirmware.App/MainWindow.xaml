@@ -1,0 +1,236 @@
+<Window x:Class="NexusFirmware.App.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="clr-namespace:NexusFirmware.App.ViewModels"
+        Title="NEXUS Firmware Studio"
+        Height="900" Width="1480"
+        MinHeight="720" MinWidth="1180"
+        WindowStartupLocation="CenterScreen"
+        WindowState="Maximized"
+        Background="{StaticResource BackgroundBrush}">
+
+    <Window.Resources>
+        <Style x:Key="SidebarButton" TargetType="Button">
+            <Setter Property="Foreground" Value="{StaticResource MutedBrush}" />
+            <Setter Property="FontFamily" Value="{StaticResource UiFont}" />
+            <Setter Property="FontSize" Value="12.5" />
+            <Setter Property="HorizontalContentAlignment" Value="Left" />
+            <Setter Property="Cursor" Value="Hand" />
+            <Setter Property="Margin" Value="10,2" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="Root" Background="Transparent" CornerRadius="8" Padding="12,9">
+                            <ContentPresenter VerticalAlignment="Center" />
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="Root" Property="Background" Value="{StaticResource PanelAltBrush}" />
+                                <Setter Property="Foreground" Value="{StaticResource TextBrush}" />
+                            </Trigger>
+                            <DataTrigger Binding="{Binding IsActive}" Value="True">
+                                <Setter TargetName="Root" Property="Background" Value="{StaticResource PanelAltBrush}" />
+                                <Setter TargetName="Root" Property="BorderBrush" Value="{StaticResource AccentBrush}" />
+                                <Setter TargetName="Root" Property="BorderThickness" Value="1" />
+                                <Setter Property="Foreground" Value="{StaticResource TextBrush}" />
+                            </DataTrigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <Style x:Key="StatusChip" TargetType="Border">
+            <Setter Property="Background" Value="{StaticResource PanelAltBrush}" />
+            <Setter Property="BorderBrush" Value="{StaticResource StrokeBrush}" />
+            <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="CornerRadius" Value="12" />
+            <Setter Property="Padding" Value="10,3" />
+            <Setter Property="Margin" Value="0,0,6,0" />
+        </Style>
+    </Window.Resources>
+
+    <Grid>
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="250" />
+            <ColumnDefinition Width="*" />
+        </Grid.ColumnDefinitions>
+
+        <!-- Боковая панель -->
+        <Border Grid.Column="0" Background="{StaticResource PanelBrush}"
+                BorderBrush="{StaticResource StrokeBrush}" BorderThickness="0,0,1,0">
+            <DockPanel>
+                <StackPanel DockPanel.Dock="Top" Margin="20,20,20,16">
+                    <StackPanel Orientation="Horizontal">
+                        <Border Width="30" Height="30" CornerRadius="8" Background="{StaticResource AccentBrush}"
+                                VerticalAlignment="Center">
+                            <TextBlock Text="N" Foreground="White" FontSize="17" FontWeight="Bold"
+                                       HorizontalAlignment="Center" VerticalAlignment="Center" />
+                        </Border>
+                        <StackPanel Margin="10,0,0,0" VerticalAlignment="Center">
+                            <TextBlock Text="NEXUS" FontSize="17" FontWeight="Bold" />
+                            <TextBlock Text="FIRMWARE STUDIO" FontSize="9" Foreground="{StaticResource MutedBrush}" />
+                        </StackPanel>
+                    </StackPanel>
+                    <Border Height="1" Background="{StaticResource StrokeBrush}" Margin="0,16,0,8" />
+                    <TextBlock Text="РАБОЧЕЕ МЕСТО ИНЖЕНЕРА" FontSize="9" Foreground="{StaticResource MutedBrush}" Margin="2,0,0,4" />
+                </StackPanel>
+
+                <StackPanel DockPanel.Dock="Bottom" Margin="16,10,16,16">
+                    <Border Height="1" Background="{StaticResource StrokeBrush}" Margin="0,0,0,10" />
+                    <TextBlock Text="{Binding VersionText}" Style="{StaticResource Caption}" FontFamily="{StaticResource MonoFont}" />
+                    <TextBlock Text="{Binding SettingsSummary}" Style="{StaticResource Caption}" Margin="0,3,0,0" />
+                    <TextBlock Text="Локальный режим · без скрытой отправки данных" Style="{StaticResource Caption}"
+                               Margin="0,3,0,0" TextWrapping="Wrap" />
+                </StackPanel>
+
+                <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+                    <ItemsControl ItemsSource="{Binding Navigation}">
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate>
+                                <Button Style="{StaticResource SidebarButton}"
+                                        Command="{Binding DataContext.NavigateCommand, RelativeSource={RelativeSource AncestorType=Window}}"
+                                        CommandParameter="{Binding}">
+                                    <StackPanel Orientation="Horizontal">
+                                        <TextBlock Text="{Binding Glyph}" Width="22" FontSize="13"
+                                                   Foreground="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}" />
+                                        <StackPanel Margin="2,0,0,0">
+                                            <TextBlock Text="{Binding Title}" FontSize="12.5"
+                                                       Foreground="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}" />
+                                            <TextBlock Text="{Binding TitleEn}" FontSize="9"
+                                                       Foreground="{StaticResource MutedBrush}" />
+                                        </StackPanel>
+                                    </StackPanel>
+                                </Button>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                </ScrollViewer>
+            </DockPanel>
+        </Border>
+
+        <!-- Правая часть -->
+        <Grid Grid.Column="1">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="*" />
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="Auto" />
+            </Grid.RowDefinitions>
+
+            <!-- Верхняя панель подключения -->
+            <Border Grid.Row="0" Background="{StaticResource PanelBrush}"
+                    BorderBrush="{StaticResource StrokeBrush}" BorderThickness="0,0,0,1" Padding="18,12">
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
+
+                    <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                        <Ellipse Width="9" Height="9" Margin="0,0,8,0" VerticalAlignment="Center"
+                                 Fill="{Binding ConnectionStatus, Converter={StaticResource StateToBrush}}" />
+                        <StackPanel>
+                            <TextBlock Text="{Binding SelectedDeviceTitle}" FontSize="14" FontWeight="SemiBold" />
+                            <TextBlock Text="{Binding DeviceStatus}" Style="{StaticResource Caption}" />
+                        </StackPanel>
+                        <ComboBox Width="300" Margin="18,0,0,0" VerticalAlignment="Center"
+                                  ItemsSource="{Binding Devices}"
+                                  SelectedItem="{Binding SelectedDevice, Mode=TwoWay}"
+                                  DisplayMemberPath="DisplayName"
+                                  ToolTip="Выбор активного устройства" />
+                        <Button Content="{Binding RefreshButtonText}" Margin="10,0,0,0"
+                                Command="{Binding RefreshDevicesCommand}" VerticalAlignment="Center" />
+                    </StackPanel>
+
+                    <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
+                        <Border Style="{StaticResource StatusChip}">
+                            <TextBlock Text="{Binding AdbStatus}" FontSize="11.5" />
+                        </Border>
+                        <Border Style="{StaticResource StatusChip}">
+                            <TextBlock Text="{Binding FastbootStatus}" FontSize="11.5" />
+                        </Border>
+                        <Border Style="{StaticResource StatusChip}">
+                            <TextBlock Text="{Binding ConnectionStatus}" FontSize="11.5" />
+                        </Border>
+                        <Button Content="{Binding LogPanelToggleText}" Command="{Binding ToggleLogPanelCommand}"
+                                Style="{StaticResource GhostButton}" Margin="6,0,0,0" />
+                    </StackPanel>
+                </Grid>
+            </Border>
+
+            <!-- Рабочая область -->
+            <ContentControl Grid.Row="1" Content="{Binding Current}" Margin="18,16,18,10" />
+
+            <!-- Панель журнала -->
+            <Border Grid.Row="2" Height="190" Background="{StaticResource PanelBrush}"
+                    BorderBrush="{StaticResource StrokeBrush}" BorderThickness="0,1,0,0"
+                    Visibility="{Binding IsLogPanelVisible, Converter={StaticResource BoolToVisibility}}">
+                <DockPanel Margin="14,8,14,8">
+                    <Grid DockPanel.Dock="Top" Margin="0,0,0,6">
+                        <TextBlock Text="ЖУРНАЛ ВЫПОЛНЕНИЯ" FontSize="10" Foreground="{StaticResource MutedBrush}"
+                                   VerticalAlignment="Center" />
+                        <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+                            <Button Content="Очистить" Style="{StaticResource GhostButton}" Padding="9,3"
+                                    Command="{Binding ClearLogCommand}" FontSize="11" />
+                            <Button Content="Открыть каталог журналов" Style="{StaticResource GhostButton}" Padding="9,3"
+                                    Command="{Binding OpenLogsCommand}" FontSize="11" Margin="6,0,0,0" />
+                        </StackPanel>
+                    </Grid>
+                    <ListBox ItemsSource="{Binding LogEntries}" FontFamily="{StaticResource MonoFont}" FontSize="11.5"
+                             Background="{StaticResource BackgroundBrush}" BorderThickness="0"
+                             ScrollViewer.HorizontalScrollBarVisibility="Auto"
+                             VirtualizingPanel.IsVirtualizing="True">
+                        <ListBox.ItemTemplate>
+                            <DataTemplate>
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="62" />
+                                        <ColumnDefinition Width="42" />
+                                        <ColumnDefinition Width="130" />
+                                        <ColumnDefinition Width="*" />
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock Grid.Column="0" Text="{Binding TimeText}" Foreground="{StaticResource MutedBrush}" />
+                                    <TextBlock Grid.Column="1" Text="{Binding LevelText}"
+                                               Foreground="{Binding Level, Converter={StaticResource LogLevelToBrush}}" />
+                                    <TextBlock Grid.Column="2" Text="{Binding Source}" Foreground="{StaticResource AccentBrush}"
+                                               TextTrimming="CharacterEllipsis" />
+                                    <TextBlock Grid.Column="3" Text="{Binding Message}" TextWrapping="Wrap" />
+                                </Grid>
+                            </DataTemplate>
+                        </ListBox.ItemTemplate>
+                    </ListBox>
+                </DockPanel>
+            </Border>
+
+            <!-- Нижняя панель: очередь, прогресс, уведомления -->
+            <Border Grid.Row="3" Background="{StaticResource PanelAltBrush}"
+                    BorderBrush="{StaticResource StrokeBrush}" BorderThickness="0,1,0,0" Padding="16,8">
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="220" />
+                        <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
+
+                    <StackPanel VerticalAlignment="Center">
+                        <TextBlock Text="{Binding CurrentJobStatus}" FontSize="12" />
+                        <ProgressBar Value="{Binding CurrentJobProgress}" Maximum="100" Margin="0,5,20,0" />
+                    </StackPanel>
+
+                    <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                        <TextBlock Text="{Binding Jobs.Count, StringFormat=Заданий в сессии: {0}}" Style="{StaticResource Caption}" />
+                        <TextBlock Text="Очередь последовательная" Style="{StaticResource Caption}" />
+                    </StackPanel>
+
+                    <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center">
+                        <Button Content="Отменить задачу" Command="{Binding CancelJobCommand}" Style="{StaticResource GhostButton}"
+                                Padding="10,5" FontSize="11.5" />
+                        <Button Content="Отчёты" Command="{Binding OpenReportsCommand}" Style="{StaticResource GhostButton}"
+                                Padding="10,5" FontSize="11.5" Margin="6,0,0,0" />
+                    </StackPanel>
+                </Grid>
+            </Border>
+        </Grid>
+    </Grid>
+</Window>

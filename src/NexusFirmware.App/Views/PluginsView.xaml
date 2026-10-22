@@ -1,0 +1,109 @@
+<UserControl x:Class="NexusFirmware.App.Views.PluginsView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+        </Grid.RowDefinitions>
+
+        <Grid Grid.Row="0" Margin="0,0,0,10">
+            <StackPanel>
+                <TextBlock Text="Плагины" Style="{StaticResource SectionTitle}" />
+                <TextBlock Text="Plugins · модули расширения с проверкой SHA-256, издателя и версии хоста"
+                           Style="{StaticResource SectionSubtitle}" />
+            </StackPanel>
+            <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Top">
+                <Button Content="Пересканировать" Style="{StaticResource PrimaryButton}" Command="{Binding RescanCommand}" Margin="0,0,8,0" />
+                <Button Content="Открыть каталог плагинов" Command="{Binding OpenFolderCommand}" />
+            </StackPanel>
+        </Grid>
+
+        <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto">
+            <StackPanel>
+                <Border Style="{StaticResource Card}">
+                    <StackPanel>
+                        <TextBlock Text="Активные модули" Style="{StaticResource CardTitle}" />
+                        <DataGrid ItemsSource="{Binding Plugins}" MaxHeight="220" BorderThickness="0">
+                            <DataGrid.Columns>
+                                <DataGridTextColumn Header="Название" Binding="{Binding Name}" Width="1.4*" />
+                                <DataGridTextColumn Header="Идентификатор" Binding="{Binding Id}" Width="1.4*" />
+                                <DataGridTextColumn Header="Версия" Binding="{Binding Version}" Width="80" />
+                                <DataGridTextColumn Header="Издатель" Binding="{Binding Publisher}" Width="1.2*" />
+                                <DataGridTextColumn Header="Происхождение" Binding="{Binding Origin}" Width="1.2*" />
+                                <DataGridTextColumn Header="Операции" Binding="{Binding Operations}" Width="1.6*" />
+                            </DataGrid.Columns>
+                        </DataGrid>
+                        <TextBlock Text="{Binding PluginsDirectory, StringFormat=Каталог плагинов: {0}}" Style="{StaticResource Caption}"
+                                   Margin="0,8,0,0" FontFamily="{StaticResource MonoFont}" />
+                        <TextBlock Text="{Binding Status}" Style="{StaticResource Caption}" Margin="0,4,0,0" />
+                    </StackPanel>
+                </Border>
+
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="12" />
+                        <ColumnDefinition Width="*" />
+                    </Grid.ColumnDefinitions>
+
+                    <StackPanel Grid.Column="0">
+                        <Border Style="{StaticResource Card}">
+                            <StackPanel>
+                                <TextBlock Text="Политика загрузки" Style="{StaticResource CardTitle}" />
+                                <CheckBox Content="Разрешить загрузку внешних плагинов" IsChecked="{Binding AllowLoading}" />
+                                <Button Content="Сохранить флаг" Command="{Binding SaveLoadingFlagCommand}"
+                                        HorizontalAlignment="Left" Style="{StaticResource GhostButton}" Margin="0,6,0,10" />
+                                <ItemsControl ItemsSource="{Binding Policy}">
+                                    <ItemsControl.ItemTemplate>
+                                        <DataTemplate>
+                                            <TextBlock Text="{Binding}" FontSize="11.5" Foreground="{StaticResource MutedBrush}"
+                                                       Margin="0,0,0,4" TextWrapping="Wrap" />
+                                        </DataTemplate>
+                                    </ItemsControl.ItemTemplate>
+                                </ItemsControl>
+                            </StackPanel>
+                        </Border>
+
+                        <Border Style="{StaticResource Card}">
+                            <StackPanel>
+                                <TextBlock Text="Отклонённые плагины" Style="{StaticResource CardTitle}" />
+                                <ListBox ItemsSource="{Binding Rejected}" Height="110" />
+                                <TextBlock Text="Отклонённые модули не загружаются в процесс приложения."
+                                           Style="{StaticResource Caption}" Margin="0,6,0,0" />
+                            </StackPanel>
+                        </Border>
+                    </StackPanel>
+
+                    <Border Grid.Column="2" Style="{StaticResource Card}">
+                        <StackPanel>
+                            <TextBlock Text="Доверенные издатели" Style="{StaticResource CardTitle}" />
+                            <ListBox ItemsSource="{Binding TrustedPublishers}" Height="150">
+                                <ListBox.ItemTemplate>
+                                    <DataTemplate>
+                                        <Grid>
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="*" />
+                                                <ColumnDefinition Width="Auto" />
+                                            </Grid.ColumnDefinitions>
+                                            <TextBlock Grid.Column="0" Text="{Binding}" FontSize="12" />
+                                            <Button Grid.Column="1" Content="Отозвать" Padding="8,2" FontSize="11"
+                                                    Command="{Binding DataContext.RevokeCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                                    CommandParameter="{Binding}" />
+                                        </Grid>
+                                    </DataTemplate>
+                                </ListBox.ItemTemplate>
+                            </ListBox>
+                            <TextBox Text="{Binding NewPublisher, UpdateSourceTrigger=PropertyChanged}" Margin="0,8,0,6"
+                                     ToolTip="Точное имя издателя из манифеста плагина" />
+                            <Button Content="Добавить издателя в доверенные" Command="{Binding AddTrustedCommand}"
+                                    Style="{StaticResource PrimaryButton}" HorizontalAlignment="Left" />
+                            <TextBlock Text="Доверие издателю — ваше решение. Проверяйте источник сборки и её SHA-256."
+                                       Style="{StaticResource Caption}" Margin="0,8,0,0" TextWrapping="Wrap" />
+                        </StackPanel>
+                    </Border>
+                </Grid>
+            </StackPanel>
+        </ScrollViewer>
+    </Grid>
+</UserControl>

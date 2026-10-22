@@ -1,0 +1,14 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <RootNamespace>NexusFirmware.DeviceDetection</RootNamespace>
+    <Description>NEXUS Firmware Studio — обнаружение устройств через ADB, Fastboot и USB-перечисление Windows.</Description>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="../NexusFirmware.Core/NexusFirmware.Core.csproj" />
+    <ProjectReference Include="../NexusFirmware.Infrastructure/NexusFirmware.Infrastructure.csproj" />
+  </ItemGroup>
+
+</Project>

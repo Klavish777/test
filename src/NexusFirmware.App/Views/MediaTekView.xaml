@@ -1,0 +1,153 @@
+<UserControl x:Class="NexusFirmware.App.Views.MediaTekView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+            <RowDefinition Height="Auto" />
+        </Grid.RowDefinitions>
+
+        <StackPanel Grid.Row="0" Margin="0,0,0,10">
+            <TextBlock Text="Сервис MediaTek" Style="{StaticResource SectionTitle}" />
+            <TextBlock Text="MediaTek Service · scatter-файлы, проверка образов, требования авторизации. Обход SLA/DAA не выполняется."
+                       Style="{StaticResource SectionSubtitle}" />
+        </StackPanel>
+
+        <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto">
+            <StackPanel>
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="12" />
+                        <ColumnDefinition Width="*" />
+                    </Grid.ColumnDefinitions>
+
+                    <Border Grid.Column="0" Style="{StaticResource Card}">
+                        <StackPanel>
+                            <TextBlock Text="Устройства MediaTek" Style="{StaticResource CardTitle}" />
+                            <DataGrid ItemsSource="{Binding Devices}" MaxHeight="120" BorderThickness="0">
+                                <DataGrid.Columns>
+                                    <DataGridTextColumn Header="Устройство" Binding="{Binding DisplayName}" Width="*" />
+                                    <DataGridTextColumn Header="Режим" Binding="{Binding ModeText}" Width="160" />
+                                    <DataGridTextColumn Header="Драйвер" Binding="{Binding DriverText}" Width="160" />
+                                </DataGrid.Columns>
+                            </DataGrid>
+                            <Button Content="Обновить" Command="{Binding RefreshDevicesCommand}" Style="{StaticResource GhostButton}"
+                                    HorizontalAlignment="Left" Margin="0,8,0,0" />
+                            <TextBlock Text="Требования авторизации" Style="{StaticResource Caption}" Margin="0,10,0,4" />
+                            <ItemsControl ItemsSource="{Binding AuthorizationRequirements}">
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate>
+                                        <TextBlock Text="{Binding}" FontSize="11.5" Foreground="{StaticResource WarningBrush}"
+                                                   Margin="0,0,0,3" TextWrapping="Wrap" />
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+                        </StackPanel>
+                    </Border>
+
+                    <Border Grid.Column="2" Style="{StaticResource Card}">
+                        <StackPanel>
+                            <TextBlock Text="Пакет прошивки" Style="{StaticResource CardTitle}" />
+                            <TextBlock Text="Каталог с scatter-файлом и образами разделов" Style="{StaticResource Caption}" />
+                            <TextBox Text="{Binding PackageDirectory}" Margin="0,6,0,6" FontSize="11.5" />
+                            <WrapPanel>
+                                <Button Content="Выбрать каталог" Command="{Binding BrowseCommand}" Margin="0,0,8,0" />
+                                <Button Content="Анализировать" Style="{StaticResource PrimaryButton}" Command="{Binding AnalyzeCommand}" />
+                            </WrapPanel>
+                            <TextBlock Text="{Binding Status}" Style="{StaticResource Caption}" Margin="0,8,0,0" TextWrapping="Wrap" />
+                            <Button Content="Сохранить отчёт" Command="{Binding SaveReportCommand}" Margin="0,8,0,0"
+                                    HorizontalAlignment="Left" Style="{StaticResource GhostButton}" />
+                        </StackPanel>
+                    </Border>
+                </Grid>
+
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="1.4*" />
+                        <ColumnDefinition Width="12" />
+                        <ColumnDefinition Width="*" />
+                    </Grid.ColumnDefinitions>
+
+                    <Border Grid.Column="0" Style="{StaticResource Card}" Padding="10">
+                        <DockPanel>
+                            <TextBlock DockPanel.Dock="Top" Text="Разделы scatter" Style="{StaticResource CardTitle}" />
+                            <DataGrid ItemsSource="{Binding Partitions}" MaxHeight="260" BorderThickness="0">
+                                <DataGrid.Columns>
+                                    <DataGridTextColumn Header="Раздел" Binding="{Binding Name}" Width="*" />
+                                    <DataGridTextColumn Header="Размер" Binding="{Binding Size}" Width="120" />
+                                    <DataGridTextColumn Header="Файл" Binding="{Binding Source}" Width="1.6*" />
+                                    <DataGridTextColumn Header="Тип операции" Binding="{Binding Detail}" Width="140" />
+                                </DataGrid.Columns>
+                            </DataGrid>
+                        </DockPanel>
+                    </Border>
+
+                    <StackPanel Grid.Column="2">
+                        <Border Style="{StaticResource Card}">
+                            <StackPanel>
+                                <TextBlock Text="Проверки" Style="{StaticResource CardTitle}" />
+                                <ItemsControl ItemsSource="{Binding Checks}">
+                                    <ItemsControl.ItemTemplate>
+                                        <DataTemplate>
+                                            <StackPanel Margin="0,0,0,5">
+                                                <TextBlock Text="{Binding Check}" FontSize="11" FontWeight="SemiBold"
+                                                           Foreground="{Binding Severity, Converter={StaticResource SeverityToBrush}}" />
+                                                <TextBlock Text="{Binding Message}" FontSize="11.5" TextWrapping="Wrap" />
+                                            </StackPanel>
+                                        </DataTemplate>
+                                    </ItemsControl.ItemTemplate>
+                                </ItemsControl>
+                            </StackPanel>
+                        </Border>
+
+                        <Border Style="{StaticResource Card}">
+                            <StackPanel>
+                                <TextBlock Text="План подготовки" Style="{StaticResource CardTitle}" />
+                                <ItemsControl ItemsSource="{Binding PlanSteps}">
+                                    <ItemsControl.ItemTemplate>
+                                        <DataTemplate>
+                                            <TextBlock Text="{Binding}" FontSize="11.5" Margin="0,0,0,3" TextWrapping="Wrap" />
+                                        </DataTemplate>
+                                    </ItemsControl.ItemTemplate>
+                                </ItemsControl>
+                            </StackPanel>
+                        </Border>
+                    </StackPanel>
+                </Grid>
+
+                <Border Style="{StaticResource Card}">
+                    <StackPanel>
+                        <TextBlock Text="Предупреждения и ограничения" Style="{StaticResource CardTitle}" />
+                        <ItemsControl ItemsSource="{Binding Warnings}">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate>
+                                    <TextBlock Text="{Binding}" FontSize="11.5" Foreground="{StaticResource WarningBrush}"
+                                               Margin="0,0,0,3" TextWrapping="Wrap" />
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                        <ItemsControl ItemsSource="{Binding Limitations}" Margin="0,6,0,0">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate>
+                                    <TextBlock Text="{Binding}" FontSize="11" Foreground="{StaticResource MutedBrush}"
+                                               Margin="0,0,0,3" TextWrapping="Wrap" />
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                    </StackPanel>
+                </Border>
+            </StackPanel>
+        </ScrollViewer>
+
+        <Border Grid.Row="2" Style="{StaticResource Card}" Margin="0,10,0,0" MaxHeight="180">
+            <DockPanel>
+                <TextBlock DockPanel.Dock="Top" Text="Отчёт подготовки" Style="{StaticResource CardTitle}" />
+                <TextBox Text="{Binding Report, Mode=OneWay}" IsReadOnly="True" AcceptsReturn="True" TextWrapping="NoWrap"
+                         FontFamily="{StaticResource MonoFont}" FontSize="11" VerticalScrollBarVisibility="Auto"
+                         HorizontalScrollBarVisibility="Auto" Background="{StaticResource BackgroundBrush}" />
+            </DockPanel>
+        </Border>
+    </Grid>
+</UserControl>

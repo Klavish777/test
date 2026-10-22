@@ -1,0 +1,67 @@
+<Application x:Class="NexusFirmware.App.App"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:conv="clr-namespace:NexusFirmware.App.Converters"
+             xmlns:vm="clr-namespace:NexusFirmware.App.ViewModels"
+             xmlns:views="clr-namespace:NexusFirmware.App.Views"
+             ShutdownMode="OnMainWindowClose">
+    <Application.Resources>
+        <ResourceDictionary>
+            <ResourceDictionary.MergedDictionaries>
+                <ResourceDictionary Source="Themes/DarkTheme.xaml" />
+            </ResourceDictionary.MergedDictionaries>
+
+            <conv:BoolToVisibilityConverter x:Key="BoolToVisibility" />
+            <conv:BoolToVisibilityConverter x:Key="InverseBoolToVisibility" Invert="True" />
+            <conv:NullToVisibilityConverter x:Key="NullToVisibility" />
+            <conv:NullToVisibilityConverter x:Key="InverseNullToVisibility" Invert="True" />
+            <conv:SeverityToBrushConverter x:Key="SeverityToBrush" />
+            <conv:LogLevelToBrushConverter x:Key="LogLevelToBrush" />
+            <conv:StateToBrushConverter x:Key="StateToBrush" />
+            <conv:InverseBoolConverter x:Key="InverseBool" />
+
+            <DataTemplate DataType="{x:Type vm:DashboardViewModel}">
+                <views:DashboardView />
+            </DataTemplate>
+            <DataTemplate DataType="{x:Type vm:DevicesViewModel}">
+                <views:DevicesView />
+            </DataTemplate>
+            <DataTemplate DataType="{x:Type vm:FirmwareViewModel}">
+                <views:FirmwareView />
+            </DataTemplate>
+            <DataTemplate DataType="{x:Type vm:FlashingViewModel}">
+                <views:FlashingView />
+            </DataTemplate>
+            <DataTemplate DataType="{x:Type vm:AdbViewModel}">
+                <views:AdbView />
+            </DataTemplate>
+            <DataTemplate DataType="{x:Type vm:QualcommViewModel}">
+                <views:QualcommView />
+            </DataTemplate>
+            <DataTemplate DataType="{x:Type vm:MediaTekViewModel}">
+                <views:MediaTekView />
+            </DataTemplate>
+            <DataTemplate DataType="{x:Type vm:SamsungViewModel}">
+                <views:SamsungView />
+            </DataTemplate>
+            <DataTemplate DataType="{x:Type vm:ExtractorViewModel}">
+                <views:ExtractorView />
+            </DataTemplate>
+            <DataTemplate DataType="{x:Type vm:PartitionsViewModel}">
+                <views:PartitionsView />
+            </DataTemplate>
+            <DataTemplate DataType="{x:Type vm:LogsViewModel}">
+                <views:LogsView />
+            </DataTemplate>
+            <DataTemplate DataType="{x:Type vm:DriversViewModel}">
+                <views:DriversView />
+            </DataTemplate>
+            <DataTemplate DataType="{x:Type vm:PluginsViewModel}">
+                <views:PluginsView />
+            </DataTemplate>
+            <DataTemplate DataType="{x:Type vm:SettingsViewModel}">
+                <views:SettingsView />
+            </DataTemplate>
+        </ResourceDictionary>
+    </Application.Resources>
+</Application>

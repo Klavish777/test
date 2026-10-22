@@ -1,119 +1,169 @@
-name: CI · тесты и сборка Windows
+name: CI
 
 on:
   push:
-    branches: ["**"]
-    tags: ["v*"]
+    branches: [main, 'arena/**']
+    tags: ['v*']
   pull_request:
   workflow_dispatch:
 
-permissions:
-  contents: write
+env:
+  DOTNET_VERSION: '10.0.x'
+  DOTNET_NOLOGO: 'true'
+  DOTNET_CLI_TELEMETRY_OPTOUT: 'true'
+  DOTNET_SKIP_FIRST_TIME_EXPERIENCE: 'true'
 
 jobs:
+  # ---------------------------------------------------------------- tests ----
   tests:
-    name: Тесты (Ubuntu, offscreen Qt)
+    name: Сборка библиотек и тесты (Linux)
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
 
-      - uses: actions/setup-python@v5
+      - name: Установка .NET SDK
+        uses: actions/setup-dotnet@v4
         with:
-          python-version: "3.11"
-          cache: pip
+          dotnet-version: ${{ env.DOTNET_VERSION }}
 
-      - name: Системные библиотеки Qt
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y libgl1 libegl1 libxkbcommon-x11-0 libdbus-1-3 libxcb-cursor0
+      - name: Кэш NuGet
+        uses: actions/cache@v4
+        with:
+          path: ~/.nuget/packages
+          key: nuget-${{ runner.os }}-${{ hashFiles('**/*.csproj', 'Directory.Build.props') }}
+          restore-keys: nuget-${{ runner.os }}-
 
-      - name: Зависимости
+      - name: Восстановление пакетов
+        run: dotnet restore tests/NexusFirmware.UnitTests/NexusFirmware.UnitTests.csproj tests/NexusFirmware.IntegrationTests/NexusFirmware.IntegrationTests.csproj
+
+      - name: Сборка (без предупреждений как ошибок)
         run: |
-          python -m pip install --upgrade pip
-          python -m pip install -r requirements-dev.txt
+          dotnet build src/NexusFirmware.Core/NexusFirmware.Core.csproj -c Release --no-restore
+          dotnet build src/NexusFirmware.Infrastructure/NexusFirmware.Infrastructure.csproj -c Release --no-restore
+          dotnet build src/NexusFirmware.DeviceDetection/NexusFirmware.DeviceDetection.csproj -c Release --no-restore
+          dotnet build src/NexusFirmware.Firmware/NexusFirmware.Firmware.csproj -c Release --no-restore
+          dotnet build src/NexusFirmware.Flashing/NexusFirmware.Flashing.csproj -c Release --no-restore
+          dotnet build src/NexusFirmware.Qualcomm/NexusFirmware.Qualcomm.csproj -c Release --no-restore
+          dotnet build src/NexusFirmware.MediaTek/NexusFirmware.MediaTek.csproj -c Release --no-restore
+          dotnet build src/NexusFirmware.Samsung/NexusFirmware.Samsung.csproj -c Release --no-restore
+          dotnet build src/NexusFirmware.Plugins/NexusFirmware.Plugins.csproj -c Release --no-restore
+
+      - name: Сборка тестовых проектов
+        run: |
+          dotnet build tests/NexusFirmware.UnitTests/NexusFirmware.UnitTests.csproj -c Release --no-restore
+          dotnet build tests/NexusFirmware.IntegrationTests/NexusFirmware.IntegrationTests.csproj -c Release --no-restore
 
       - name: Тесты
-        env:
-          QT_QPA_PLATFORM: offscreen
-        run: python -m pytest tests -q
+        run: dotnet test tests/NexusFirmware.UnitTests/NexusFirmware.UnitTests.csproj -c Release --no-build --logger "trx;LogFileName=unit.trx" --results-directory TestResults
 
-      - name: Проверка базы и демо-данных
-        env:
-          QT_QPA_PLATFORM: offscreen
-        run: |
-          python main.py --check --no-demo
-          python - <<'PY'
-          from repair_os.services.context import AppContext
-          import tempfile
-          ctx = AppContext.create(tempfile.mkdtemp())
-          print(ctx.describe())
-          print(ctx.demo_counts())
-          ctx.close()
-          PY
+      - name: Интеграционные тесты
+        run: dotnet test tests/NexusFirmware.IntegrationTests/NexusFirmware.IntegrationTests.csproj -c Release --no-build --logger "trx;LogFileName=integration.trx" --results-directory TestResults
 
-  build-windows:
-    name: Сборка Windows (EXE + установщик)
+      - name: Публикация результатов тестов
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-results
+          path: TestResults
+          if-no-files-found: ignore
+
+  # -------------------------------------------------------------- windows ----
+  windows:
+    name: Сборка приложения, EXE и установщика (Windows)
     runs-on: windows-latest
     needs: tests
     steps:
       - uses: actions/checkout@v4
 
-      - uses: actions/setup-python@v5
+      - name: Установка .NET SDK
+        uses: actions/setup-dotnet@v4
         with:
-          python-version: "3.11"
-          architecture: "x64"
-          cache: pip
+          dotnet-version: ${{ env.DOTNET_VERSION }}
 
-      - name: Зависимости
+      - name: Кэш NuGet
+        uses: actions/cache@v4
+        with:
+          path: ~/.nuget/packages
+          key: nuget-${{ runner.os }}-${{ hashFiles('**/*.csproj', 'Directory.Build.props') }}
+          restore-keys: nuget-${{ runner.os }}-
+
+      - name: Восстановление решения
+        run: dotnet restore NexusFirmware.sln
+
+      - name: Сборка решения
+        run: dotnet build NexusFirmware.sln -c Release --no-restore
+
+      - name: Публикация приложения (self-contained, win-x64)
+        shell: pwsh
         run: |
-          python -m pip install --upgrade pip
-          python -m pip install -r requirements-dev.txt
+          dotnet publish src/NexusFirmware.App/NexusFirmware.App.csproj `
+            -c Release -r win-x64 --self-contained true `
+            -p:PublishSingleFile=true `
+            -p:IncludeNativeLibrariesForSelfExtract=true `
+            -p:DebugType=none `
+            -o artifacts/publish
+          Rename-Item artifacts/publish/NexusFirmware.App.exe NexusFirmwareStudio.exe -ErrorAction SilentlyContinue
 
-      - name: Inno Setup
+      - name: Проверка содержимого публикации
+        shell: pwsh
+        run: |
+          Get-ChildItem artifacts/publish | Format-Table Name, Length
+          if (-not (Test-Path artifacts/publish/NexusFirmwareStudio.exe)) { throw "EXE не создан" }
+
+      - name: Установка Inno Setup
+        shell: pwsh
         run: choco install innosetup --no-progress -y
 
-      - name: Тесты (Windows)
-        env:
-          QT_QPA_PLATFORM: offscreen
-        run: python -m pytest tests -q
-
-      - name: Сборка EXE и установщика
+      - name: Сборка установщика
         shell: pwsh
         run: |
-          ./scripts/build_windows.ps1 -Version "${{ github.ref_name }}" -SkipTests
+          & "C:\Program Files (x86)\Inno Setup 6\ISCC.exe" installer\nexus.iss
+          Get-ChildItem installer\Output
 
-      - name: Проверка артефактов
-        shell: pwsh
-        run: |
-          if (!(Test-Path "dist/SmartphoneRepairOS/SmartphoneRepairOS.exe")) { throw "EXE не создан" }
-          Get-ChildItem installer/Output -ErrorAction SilentlyContinue | Format-Table Name, Length
-
-      - name: "Артефакт: портативная сборка"
+      - name: Экспорт артефактов
         uses: actions/upload-artifact@v4
         with:
-          name: SmartphoneRepairOS-portable
-          path: dist/SmartphoneRepairOS/**
+          name: nexus-firmware-studio-windows
+          path: |
+            installer/Output/*.exe
+            artifacts/publish/NexusFirmwareStudio.exe
           if-no-files-found: error
 
-      - name: "Артефакт: установщик"
-        uses: actions/upload-artifact@v4
+  # ---------------------------------------------------------------- release ---
+  release:
+    name: Публикация релиза
+    runs-on: ubuntu-latest
+    needs: windows
+    if: startsWith(github.ref, 'refs/tags/v') || github.event_name == 'workflow_dispatch'
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Загрузка установщика
+        uses: actions/download-artifact@v4
         with:
-          name: SmartphoneRepairOS-installer
-          path: installer/Output/*.exe
-          if-no-files-found: error
+          name: nexus-firmware-studio-windows
+          path: dist
 
-      - name: Публикация в Release (для тегов v*)
-        if: startsWith(github.ref, 'refs/tags/v')
+      - name: Создание релиза
         uses: softprops/action-gh-release@v2
         with:
-          name: "Smartphone Repair OS ${{ github.ref_name }}"
+          tag_name: ${{ startsWith(github.ref, 'refs/tags/v') && github.ref_name || format('build-{0}', github.run_number) }}
+          name: NEXUS Firmware Studio ${{ startsWith(github.ref, 'refs/tags/v') && github.ref_name || format('build {0}', github.run_number) }}
           draft: false
-          generate_release_notes: true
-          files: |
-            installer/Output/*.exe
+          prerelease: false
           body: |
-            Установщик Windows 10/11 (x64). MVP-версия.
+            Автоматическая сборка NEXUS Firmware Studio.
 
-            Портативная сборка доступна в артефактах workflow (SmartphoneRepairOS-portable).
-            Все демонстрационные данные помечены как ДЕМО и не являются проверенными
-            прошивками, схемами или 3D-моделями.
+            **Установщик:** `NEXUS-Firmware-Studio-Setup-*.exe` (Windows 10/11 x64).
+            **Портативная версия:** `NexusFirmwareStudio.exe`.
+
+            Приложение не содержит обхода защиты устройств: операции записи выполняются только
+            через документированные интерфейсы (ADB/Fastboot) и требуют явного подтверждения.
+            Samsung Odin, MediaTek BROM/SLA/DAA и Qualcomm Firehose — только подготовка
+            (генерация плана и отчёта) для официальных инструментов, установленных пользователем.
+          files: |
+            dist/installer/Output/*.exe
+            dist/artifacts/publish/NexusFirmwareStudio.exe
+          fail_on_unmatched_files: false

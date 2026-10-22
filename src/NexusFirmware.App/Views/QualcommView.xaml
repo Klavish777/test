@@ -1,0 +1,133 @@
+<UserControl x:Class="NexusFirmware.App.Views.QualcommView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+            <RowDefinition Height="Auto" />
+        </Grid.RowDefinitions>
+
+        <StackPanel Grid.Row="0" Margin="0,0,0,10">
+            <TextBlock Text="Сервис Qualcomm" Style="{StaticResource SectionTitle}" />
+            <TextBlock Text="Qualcomm Service · диагностика EDL, анализ rawprogram XML и programmer-файлов, отчёт перед сервисной операцией"
+                       Style="{StaticResource SectionSubtitle}" />
+        </StackPanel>
+
+        <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto">
+            <StackPanel>
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="12" />
+                        <ColumnDefinition Width="*" />
+                    </Grid.ColumnDefinitions>
+
+                    <Border Grid.Column="0" Style="{StaticResource Card}">
+                        <StackPanel>
+                            <TextBlock Text="Устройства в режиме EDL" Style="{StaticResource CardTitle}" />
+                            <DataGrid ItemsSource="{Binding EdlDevices}" MaxHeight="140" BorderThickness="0">
+                                <DataGrid.Columns>
+                                    <DataGridTextColumn Header="Устройство" Binding="{Binding DisplayName}" Width="*" />
+                                    <DataGridTextColumn Header="Режим" Binding="{Binding ModeText}" Width="150" />
+                                    <DataGridTextColumn Header="ID" Binding="{Binding MaskedSerial}" Width="140" />
+                                    <DataGridTextColumn Header="Драйвер" Binding="{Binding DriverText}" Width="150" />
+                                </DataGrid.Columns>
+                            </DataGrid>
+                            <Button Content="Обновить список устройств" Command="{Binding RefreshDevicesCommand}"
+                                    Style="{StaticResource GhostButton}" HorizontalAlignment="Left" Margin="0,8,0,0" />
+                            <TextBlock Text="Показаны только реально обнаруженные интерфейсы 05C6:9008. Приложение не имитирует подключение EDL."
+                                       Style="{StaticResource Caption}" Margin="0,6,0,0" TextWrapping="Wrap" />
+                        </StackPanel>
+                    </Border>
+
+                    <Border Grid.Column="2" Style="{StaticResource Card}">
+                        <StackPanel>
+                            <TextBlock Text="Сервисный пакет" Style="{StaticResource CardTitle}" />
+                            <TextBlock Text="Каталог с rawprogram*.xml, patch*.xml и programmer-файлами"
+                                       Style="{StaticResource Caption}" />
+                            <TextBox Text="{Binding PackageDirectory}" Margin="0,6,0,6" FontSize="11.5" />
+                            <WrapPanel>
+                                <Button Content="Выбрать каталог" Command="{Binding BrowseCommand}" Margin="0,0,8,0" />
+                                <Button Content="Анализировать" Style="{StaticResource PrimaryButton}" Command="{Binding AnalyzeCommand}" />
+                            </WrapPanel>
+                            <TextBlock Text="{Binding Status}" Style="{StaticResource Caption}" Margin="0,8,0,0" TextWrapping="Wrap" />
+                            <Button Content="Сохранить отчёт" Command="{Binding SaveReportCommand}" Margin="0,8,0,0"
+                                    HorizontalAlignment="Left" Style="{StaticResource GhostButton}" />
+                        </StackPanel>
+                    </Border>
+                </Grid>
+
+                <Border Style="{StaticResource Card}">
+                    <StackPanel>
+                        <TextBlock Text="Файлы пакета" Style="{StaticResource CardTitle}" />
+                        <DataGrid ItemsSource="{Binding Files}" MaxHeight="220" BorderThickness="0">
+                            <DataGrid.Columns>
+                                <DataGridTextColumn Header="Файл" Binding="{Binding FileName}" Width="1.6*" />
+                                <DataGridTextColumn Header="Тип" Binding="{Binding Kind}" Width="110" />
+                                <DataGridTextColumn Header="Размер" Binding="{Binding SizeBytes}" Width="110" />
+                                <DataGridTextColumn Header="SHA-256" Binding="{Binding Sha256}" Width="2*" />
+                            </DataGrid.Columns>
+                        </DataGrid>
+                    </StackPanel>
+                </Border>
+
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="12" />
+                        <ColumnDefinition Width="*" />
+                    </Grid.ColumnDefinitions>
+
+                    <Border Grid.Column="0" Style="{StaticResource Card}">
+                        <StackPanel>
+                            <TextBlock Text="Проверки" Style="{StaticResource CardTitle}" />
+                            <ItemsControl ItemsSource="{Binding Checks}">
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate>
+                                        <StackPanel Margin="0,0,0,5">
+                                            <TextBlock Text="{Binding Check}" FontSize="11" FontWeight="SemiBold"
+                                                       Foreground="{Binding Severity, Converter={StaticResource SeverityToBrush}}" />
+                                            <TextBlock Text="{Binding Message}" FontSize="11.5" TextWrapping="Wrap" />
+                                        </StackPanel>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+                            <ItemsControl ItemsSource="{Binding Warnings}">
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate>
+                                        <TextBlock Text="{Binding}" FontSize="11.5" Foreground="{StaticResource WarningBrush}"
+                                                   Margin="0,2,0,0" TextWrapping="Wrap" />
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+                        </StackPanel>
+                    </Border>
+
+                    <Border Grid.Column="2" Style="{StaticResource Card}">
+                        <StackPanel>
+                            <TextBlock Text="Ограничения модуля" Style="{StaticResource CardTitle}" />
+                            <ItemsControl ItemsSource="{Binding Limitations}">
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate>
+                                        <TextBlock Text="{Binding}" FontSize="11.5" Foreground="{StaticResource MutedBrush}"
+                                                   Margin="0,0,0,4" TextWrapping="Wrap" />
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+                        </StackPanel>
+                    </Border>
+                </Grid>
+            </StackPanel>
+        </ScrollViewer>
+
+        <Border Grid.Row="2" Style="{StaticResource Card}" Margin="0,10,0,0" MaxHeight="220">
+            <DockPanel>
+                <TextBlock DockPanel.Dock="Top" Text="Отчёт перед сервисной операцией" Style="{StaticResource CardTitle}" />
+                <TextBox Text="{Binding Report, Mode=OneWay}" IsReadOnly="True" AcceptsReturn="True" TextWrapping="NoWrap"
+                         FontFamily="{StaticResource MonoFont}" FontSize="11" VerticalScrollBarVisibility="Auto"
+                         HorizontalScrollBarVisibility="Auto" Background="{StaticResource BackgroundBrush}" />
+            </DockPanel>
+        </Border>
+    </Grid>
+</UserControl>

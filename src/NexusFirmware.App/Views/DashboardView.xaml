@@ -1,0 +1,117 @@
+<UserControl x:Class="NexusFirmware.App.Views.DashboardView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+        </Grid.RowDefinitions>
+
+        <StackPanel Grid.Row="0" Margin="0,0,0,12">
+            <TextBlock Text="Панель управления" Style="{StaticResource SectionTitle}" />
+            <TextBlock Text="Dashboard · состояние рабочего места, активное устройство и последние отчёты"
+                       Style="{StaticResource SectionSubtitle}" />
+        </StackPanel>
+
+        <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto">
+            <StackPanel>
+                <UniformGrid Columns="4" Margin="0,0,0,4">
+                    <Border Style="{StaticResource Card}" Margin="0,0,10,12">
+                        <StackPanel>
+                            <TextBlock Text="УСТРОЙСТВА" Style="{StaticResource Caption}" />
+                            <TextBlock Text="{Binding DeviceCount}" FontSize="28" FontWeight="SemiBold" Margin="0,6,0,2" />
+                            <TextBlock Text="{Binding DeviceSummary}" Style="{StaticResource Caption}" TextWrapping="Wrap" />
+                        </StackPanel>
+                    </Border>
+                    <Border Style="{StaticResource Card}" Margin="0,0,10,12">
+                        <StackPanel>
+                            <TextBlock Text="ПРОШИВКИ В КАТАЛОГЕ" Style="{StaticResource Caption}" />
+                            <TextBlock Text="{Binding FirmwareCount}" FontSize="28" FontWeight="SemiBold" Margin="0,6,0,2" />
+                            <TextBlock Text="локальные файлы, проверенные по SHA-256" Style="{StaticResource Caption}" TextWrapping="Wrap" />
+                        </StackPanel>
+                    </Border>
+                    <Border Style="{StaticResource Card}" Margin="0,0,10,12">
+                        <StackPanel>
+                            <TextBlock Text="СВОБОДНОЕ МЕСТО" Style="{StaticResource Caption}" />
+                            <TextBlock Text="{Binding FreeSpace}" FontSize="15" FontWeight="SemiBold" Margin="0,10,0,4" TextWrapping="Wrap" />
+                            <TextBlock Text="{Binding LibraryRoot}" Style="{StaticResource Caption}" TextWrapping="Wrap" />
+                        </StackPanel>
+                    </Border>
+                    <Border Style="{StaticResource Card}" Margin="0,0,0,12">
+                        <StackPanel>
+                            <TextBlock Text="ИНСТРУМЕНТЫ" Style="{StaticResource Caption}" />
+                            <TextBlock Text="{Binding AdbState, StringFormat=ADB: {0}}" Margin="0,8,0,2" FontSize="12.5" />
+                            <TextBlock Text="{Binding FastbootState, StringFormat=Fastboot: {0}}" FontSize="12.5" />
+                        </StackPanel>
+                    </Border>
+                </UniformGrid>
+
+                <Border Style="{StaticResource Card}">
+                    <StackPanel>
+                        <TextBlock Text="Быстрые действия" Style="{StaticResource CardTitle}" />
+                        <WrapPanel>
+                            <Button Content="Диспетчер устройств" Style="{StaticResource GhostButton}" Margin="0,0,8,8"
+                                    Command="{Binding OpenDevicesCommand}" />
+                            <Button Content="Импорт прошивки" Style="{StaticResource GhostButton}" Margin="0,0,8,8"
+                                    Command="{Binding OpenFirmwareCommand}" />
+                            <Button Content="Станция прошивки" Style="{StaticResource GhostButton}" Margin="0,0,8,8"
+                                    Command="{Binding OpenFlashingCommand}" />
+                            <Button Content="Журналы и диагностика" Style="{StaticResource GhostButton}" Margin="0,0,8,8"
+                                    Command="{Binding OpenLogsCommand}" />
+                            <Button Content="Каталог отчётов" Style="{StaticResource GhostButton}" Margin="0,0,8,8"
+                                    Command="{Binding OpenReportsFolderCommand}" />
+                            <Button Content="Обновить панель" Style="{StaticResource PrimaryButton}" Margin="0,0,8,8"
+                                    Command="{Binding RefreshCommand}" />
+                        </WrapPanel>
+                        <TextBlock Text="{Binding ReadOnlyState}" Margin="0,6,0,0" FontSize="12.5"
+                                   Foreground="{StaticResource WarningBrush}" />
+                    </StackPanel>
+                </Border>
+
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="1.4*" />
+                        <ColumnDefinition Width="*" />
+                    </Grid.ColumnDefinitions>
+
+                    <Border Grid.Column="0" Style="{StaticResource Card}" Margin="0,0,10,12">
+                        <StackPanel>
+                            <TextBlock Text="Последние отчёты" Style="{StaticResource CardTitle}" />
+                            <DataGrid ItemsSource="{Binding RecentReports}" MaxHeight="220" BorderThickness="0">
+                                <DataGrid.Columns>
+                                    <DataGridTextColumn Header="Операция" Binding="{Binding Title}" Width="*" />
+                                    <DataGridTextColumn Header="Устройство" Binding="{Binding DeviceSummary}" Width="1.4*" />
+                                    <DataGridTextColumn Header="Итог" Binding="{Binding State}" Width="110" />
+                                    <DataGridTextColumn Header="Режим" Binding="{Binding ModeText}" Width="90" />
+                                    <DataGridTextColumn Header="Время" Binding="{Binding FinishedText}" Width="80" />
+                                </DataGrid.Columns>
+                            </DataGrid>
+                            <TextBlock Text="Журнал действий хранится локально в SQLite; отчёты сохраняются в каталог reports."
+                                       Style="{StaticResource Caption}" Margin="0,8,0,0" />
+                        </StackPanel>
+                    </Border>
+
+                    <Border Grid.Column="1" Style="{StaticResource Card}" Margin="0,0,0,12">
+                        <StackPanel>
+                            <TextBlock Text="Сведения" Style="{StaticResource CardTitle}" />
+                            <ItemsControl ItemsSource="{Binding QuickFacts}">
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate>
+                                        <TextBlock Text="{Binding}" FontSize="12" Margin="0,0,0,5" TextWrapping="Wrap" />
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+                        </StackPanel>
+                    </Border>
+                </Grid>
+
+                <Border Style="{StaticResource Card}">
+                    <StackPanel>
+                        <TextBlock Text="Границы применимости" Style="{StaticResource CardTitle}" />
+                        <TextBlock Text="{Binding Disclaimer}" Style="{StaticResource Value}" Foreground="{StaticResource MutedBrush}" />
+                    </StackPanel>
+                </Border>
+            </StackPanel>
+        </ScrollViewer>
+    </Grid>
+</UserControl>

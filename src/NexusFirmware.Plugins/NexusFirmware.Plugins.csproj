@@ -1,0 +1,14 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <RootNamespace>NexusFirmware.Plugins</RootNamespace>
+    <Description>NEXUS Firmware Studio — загрузка модулей расширения с проверкой целостности и издателя.</Description>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="../NexusFirmware.Core/NexusFirmware.Core.csproj" />
+    <ProjectReference Include="../NexusFirmware.Infrastructure/NexusFirmware.Infrastructure.csproj" />
+  </ItemGroup>
+
+</Project>

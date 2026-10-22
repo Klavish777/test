@@ -1,0 +1,28 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <IsPackable>false</IsPackable>
+    <IsTestProject>true</IsTestProject>
+    <RootNamespace>NexusFirmware.UnitTests</RootNamespace>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.14.1" />
+    <PackageReference Include="NUnit" Version="3.14.0" />
+    <PackageReference Include="NUnit3TestAdapter" Version="4.6.0" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="../../src/NexusFirmware.Core/NexusFirmware.Core.csproj" />
+    <ProjectReference Include="../../src/NexusFirmware.Infrastructure/NexusFirmware.Infrastructure.csproj" />
+    <ProjectReference Include="../../src/NexusFirmware.DeviceDetection/NexusFirmware.DeviceDetection.csproj" />
+    <ProjectReference Include="../../src/NexusFirmware.Firmware/NexusFirmware.Firmware.csproj" />
+    <ProjectReference Include="../../src/NexusFirmware.Flashing/NexusFirmware.Flashing.csproj" />
+    <ProjectReference Include="../../src/NexusFirmware.Qualcomm/NexusFirmware.Qualcomm.csproj" />
+    <ProjectReference Include="../../src/NexusFirmware.MediaTek/NexusFirmware.MediaTek.csproj" />
+    <ProjectReference Include="../../src/NexusFirmware.Samsung/NexusFirmware.Samsung.csproj" />
+    <ProjectReference Include="../../src/NexusFirmware.Plugins/NexusFirmware.Plugins.csproj" />
+  </ItemGroup>
+
+</Project>

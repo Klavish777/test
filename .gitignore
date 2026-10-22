@@ -1,33 +1,42 @@
-# Python
+# Python (устаревший прототип Smartphone Repair OS)
 __pycache__/
 *.py[cod]
 *.egg-info/
-build/*
-!/build/*.spec
-!/build/*.iss
-dist/
-.venv/
-venv/
 .pytest_cache/
 .ruff_cache/
 .mypy_cache/
+.venv/
+venv/
 coverage.xml
 htmlcov/
 
-# PyInstaller
-*.spec.bak
-release/
-installer/Output/
+# .NET
+bin/
+obj/
+*.user
+*.suo
+.vs/
+TestResults/
+artifacts/
+*.trx
+*.coverage
+*.nupkg
+*.snupkg
+publish/
 
-# Локальные данные приложения и артефакты ручной проверки
+# Установщик
+installer/Output/
+release/
+
+# Локальные данные, журналы, базы
 /data/
 /logs/
 *.sqlite3
 *.sqlite3-wal
 *.sqlite3-shm
-*.png
-!docs/screenshots/
-!docs/screenshots/*.png
+*.db
+*.db-wal
+*.db-shm
 
 # ОС
 Thumbs.db

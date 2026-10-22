@@ -1,0 +1,135 @@
+<UserControl x:Class="NexusFirmware.App.Views.DevicesView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+        </Grid.RowDefinitions>
+
+        <Grid Grid.Row="0" Margin="0,0,0,12">
+            <StackPanel>
+                <TextBlock Text="Диспетчер устройств" Style="{StaticResource SectionTitle}" />
+                <TextBlock Text="Device Manager · ADB, Fastboot и USB-перечисление Windows. Недоступные сведения помечаются как «недоступно»."
+                           Style="{StaticResource SectionSubtitle}" />
+            </StackPanel>
+            <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Top">
+                <Button Content="Сканировать" Style="{StaticResource PrimaryButton}" Command="{Binding ScanCommand}" Margin="0,0,8,0" />
+                <Button Content="Диспетчер устройств Windows" Command="{Binding OpenDeviceManagerCommand}" Margin="0,0,8,0" />
+                <Button Content="ADB-консоль" Command="{Binding OpenAdbConsoleCommand}" Margin="0,0,8,0" />
+                <Button Content="В станцию прошивки" Command="{Binding OpenFlashingCommand}" />
+            </StackPanel>
+        </Grid>
+
+        <Grid Grid.Row="1">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="1.15*" />
+                <ColumnDefinition Width="10" />
+                <ColumnDefinition Width="1*" />
+            </Grid.ColumnDefinitions>
+
+            <Border Grid.Column="0" Style="{StaticResource Card}">
+                <DockPanel>
+                    <StackPanel DockPanel.Dock="Top">
+                        <TextBlock Text="Обнаруженные устройства" Style="{StaticResource CardTitle}" />
+                        <TextBlock Text="{Binding EmptyText}" Foreground="{StaticResource WarningBrush}" FontSize="12"
+                                   Margin="0,0,0,8" TextWrapping="Wrap" />
+                    </StackPanel>
+
+                    <ListBox ItemsSource="{Binding Devices}" SelectedItem="{Binding Selected}"
+                             Background="{StaticResource BackgroundBrush}" BorderThickness="0">
+                        <ListBox.ItemTemplate>
+                            <DataTemplate>
+                                <Border Background="{StaticResource PanelAltBrush}" CornerRadius="8" Padding="10,8" Margin="0,0,0,6">
+                                    <StackPanel>
+                                        <Grid>
+                                            <TextBlock Text="{Binding DisplayName}" FontWeight="SemiBold" FontSize="13" />
+                                            <Border Style="{StaticResource Badge}" HorizontalAlignment="Right" Margin="0">
+                                                <TextBlock Text="{Binding ModeText}" FontSize="10.5" />
+                                            </Border>
+                                        </Grid>
+                                        <TextBlock Text="{Binding MaskedSerial}" Style="{StaticResource Caption}"
+                                                   FontFamily="{StaticResource MonoFont}" Margin="0,3,0,0" />
+                                        <TextBlock Style="{StaticResource Caption}" Margin="0,3,0,0">
+                                            <Run Text="{Binding ConnectionText}" />
+                                            <Run Text=" · " />
+                                            <Run Text="{Binding DriverText}" />
+                                        </TextBlock>
+                                    </StackPanel>
+                                </Border>
+                            </DataTemplate>
+                        </ListBox.ItemTemplate>
+                    </ListBox>
+                </DockPanel>
+            </Border>
+
+            <ScrollViewer Grid.Column="2" VerticalScrollBarVisibility="Auto">
+                <StackPanel>
+                    <Border Style="{StaticResource Card}">
+                        <StackPanel>
+                            <TextBlock Text="Карточка устройства" Style="{StaticResource CardTitle}" />
+                            <ItemsControl ItemsSource="{Binding Details}">
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate>
+                                        <Grid Margin="0,0,0,4">
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="170" />
+                                                <ColumnDefinition Width="*" />
+                                            </Grid.ColumnDefinitions>
+                                            <TextBlock Grid.Column="0" Text="{Binding Label}" Style="{StaticResource Caption}" />
+                                            <TextBlock Grid.Column="1" Text="{Binding Value}" Style="{StaticResource Value}" />
+                                        </Grid>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+                            <Button Content="Сделать активным" Command="{Binding UpdateSelectionCommand}" Margin="0,10,0,0"
+                                    HorizontalAlignment="Left" Style="{StaticResource GhostButton}" />
+                        </StackPanel>
+                    </Border>
+
+                    <Border Style="{StaticResource Card}">
+                        <StackPanel>
+                            <TextBlock Text="Доступные операции" Style="{StaticResource CardTitle}" />
+                            <ItemsControl ItemsSource="{Binding Capabilities}">
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate>
+                                        <TextBlock Text="{Binding}" FontSize="12" Margin="0,0,0,3" />
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+                        </StackPanel>
+                    </Border>
+
+                    <Border Style="{StaticResource Card}">
+                        <StackPanel>
+                            <TextBlock Text="Предупреждения" Style="{StaticResource CardTitle}" />
+                            <ItemsControl ItemsSource="{Binding Warnings}">
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate>
+                                        <TextBlock Text="{Binding}" FontSize="12" Foreground="{StaticResource WarningBrush}"
+                                                   Margin="0,0,0,4" TextWrapping="Wrap" />
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+                            <TextBlock Text="Предупреждений нет." Style="{StaticResource Caption}"
+                                       Visibility="{Binding HasWarnings, Converter={StaticResource InverseBoolToVisibility}}" />
+                        </StackPanel>
+                    </Border>
+
+                    <Border Style="{StaticResource Card}">
+                        <StackPanel>
+                            <TextBlock Text="Источники обнаружения" Style="{StaticResource CardTitle}" />
+                            <DataGrid ItemsSource="{Binding Providers}" MaxHeight="160" BorderThickness="0">
+                                <DataGrid.Columns>
+                                    <DataGridTextColumn Header="Источник" Binding="{Binding DisplayName}" Width="*" />
+                                    <DataGridTextColumn Header="Доступен" Binding="{Binding Available}" Width="80" />
+                                    <DataGridTextColumn Header="Примечание" Binding="{Binding Note}" Width="1.4*" />
+                                </DataGrid.Columns>
+                            </DataGrid>
+                        </StackPanel>
+                    </Border>
+                </StackPanel>
+            </ScrollViewer>
+        </Grid>
+    </Grid>
+</UserControl>
