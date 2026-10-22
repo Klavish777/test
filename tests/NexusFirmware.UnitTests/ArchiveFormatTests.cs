@@ -44,7 +44,11 @@ public sealed class FormatDetectorTests
     {
         using var temp = new TempDirectory();
         var path = temp.File("payload.bin");
-        File.WriteAllBytes(path, Encoding.ASCII.GetBytes("CrAU\0\0\0\0\0\0\0\2\0\0\0\0\0\0\0\0\0\0\0\0"));
+        var payload = new byte[24];
+        "CrAU"u8.CopyTo(payload);
+        System.Buffers.Binary.BinaryPrimitives.WriteUInt64BigEndian(payload.AsSpan(8), 2);
+        System.Buffers.Binary.BinaryPrimitives.WriteUInt64BigEndian(payload.AsSpan(16), 0);
+        File.WriteAllBytes(path, payload);
 
         Assert.That(FormatDetector.Detect(path), Is.EqualTo(FirmwareFormat.PayloadBin));
     }
