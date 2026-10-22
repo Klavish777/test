@@ -32,7 +32,7 @@ public static partial class InputValidator
         try
         {
             var info = new FileInfo(path);
-            return info.Exists && info.Length is > 0 and <= maxBytes;
+            return info.Exists && info.Length > 0 && info.Length <= maxBytes;
         }
         catch (Exception)
         {

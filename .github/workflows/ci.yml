@@ -144,7 +144,6 @@ jobs:
             -p:IncludeNativeLibrariesForSelfExtract=true `
             -p:DebugType=none `
             -o artifacts/publish
-          Rename-Item artifacts/publish/NexusFirmware.App.exe NexusFirmwareStudio.exe -ErrorAction SilentlyContinue
 
       - name: Проверка содержимого публикации
         shell: pwsh
