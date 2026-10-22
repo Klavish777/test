@@ -4,6 +4,7 @@ using NexusFirmware.App.Mvvm;
 using NexusFirmware.App.Services;
 using NexusFirmware.Core.Abstractions;
 using NexusFirmware.Drivers;
+using System.Threading.Tasks;
 
 namespace NexusFirmware.App.ViewModels;
 

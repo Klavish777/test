@@ -5,6 +5,8 @@ using NexusFirmware.App.Services;
 using NexusFirmware.Core.Abstractions;
 using NexusFirmware.Core.Models;
 using NexusFirmware.DeviceDetection.Services;
+using System.Linq;
+using System.Threading.Tasks;
 
 namespace NexusFirmware.App.ViewModels;
 

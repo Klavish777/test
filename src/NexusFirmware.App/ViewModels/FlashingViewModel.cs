@@ -9,6 +9,10 @@ using NexusFirmware.Firmware.Extractor;
 using NexusFirmware.Firmware.Library;
 using NexusFirmware.Flashing;
 using NexusFirmware.Infrastructure.Configuration;
+using System.IO;
+using System.Collections.Generic;
+using System.Linq;
+using System.Threading.Tasks;
 
 namespace NexusFirmware.App.ViewModels;
 

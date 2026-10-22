@@ -5,6 +5,8 @@ using NexusFirmware.Core.Abstractions;
 using NexusFirmware.Core.Models;
 using NexusFirmware.Core.Safety;
 using NexusFirmware.Firmware.Extractor;
+using System.IO;
+using System.Threading.Tasks;
 
 namespace NexusFirmware.App.ViewModels;
 

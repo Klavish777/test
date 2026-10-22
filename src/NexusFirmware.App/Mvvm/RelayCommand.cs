@@ -1,4 +1,5 @@
 using System.Windows.Input;
+using System.Threading.Tasks;
 
 namespace NexusFirmware.App.Mvvm;
 

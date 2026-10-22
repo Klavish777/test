@@ -1,5 +1,7 @@
 using System.Collections.ObjectModel;
 using NexusFirmware.Core.Models;
+using System.Collections.Generic;
+using System.Linq;
 
 namespace NexusFirmware.App.Services;
 

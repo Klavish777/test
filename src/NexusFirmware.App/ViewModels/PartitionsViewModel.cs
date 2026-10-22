@@ -6,6 +6,8 @@ using NexusFirmware.Core.Models;
 using NexusFirmware.DeviceDetection.Services;
 using NexusFirmware.Firmware.Qualcomm;
 using NexusFirmware.Firmware.Scatter;
+using System.Linq;
+using System.Threading.Tasks;
 
 namespace NexusFirmware.App.ViewModels;
 

@@ -7,6 +7,8 @@ using NexusFirmware.DeviceDetection;
 using NexusFirmware.Firmware.Library;
 using NexusFirmware.Infrastructure.Configuration;
 using NexusFirmware.Infrastructure.Data;
+using System.IO;
+using System.Threading.Tasks;
 
 namespace NexusFirmware.App.ViewModels;
 

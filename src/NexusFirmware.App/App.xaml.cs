@@ -4,10 +4,12 @@ using Microsoft.Extensions.DependencyInjection;
 using NexusFirmware.App.Services;
 using NexusFirmware.App.ViewModels;
 using NexusFirmware.Core.Abstractions;
+using NexusFirmware.Core.Jobs;
 using NexusFirmware.Infrastructure.Configuration;
 using NexusFirmware.Infrastructure.Logging;
 using NexusFirmware.Plugins;
 using Serilog;
+using System.IO;
 
 namespace NexusFirmware.App;
 

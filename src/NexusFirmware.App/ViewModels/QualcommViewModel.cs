@@ -4,6 +4,7 @@ using NexusFirmware.App.Services;
 using NexusFirmware.Core.Abstractions;
 using NexusFirmware.Core.Models;
 using NexusFirmware.Qualcomm;
+using System.Threading.Tasks;
 
 namespace NexusFirmware.App.ViewModels;
 

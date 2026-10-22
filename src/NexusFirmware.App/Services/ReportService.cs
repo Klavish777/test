@@ -5,6 +5,9 @@ using NexusFirmware.Core.Models;
 using NexusFirmware.Core.Reporting;
 using NexusFirmware.Infrastructure.Configuration;
 using NexusFirmware.Infrastructure.Data;
+using System.IO;
+using System.Collections.Generic;
+using System.Linq;
 
 namespace NexusFirmware.App.Services;
 

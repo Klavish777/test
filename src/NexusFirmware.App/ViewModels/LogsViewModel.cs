@@ -7,6 +7,7 @@ using NexusFirmware.App.Services;
 using NexusFirmware.Core.Abstractions;
 using NexusFirmware.Core.Models;
 using NexusFirmware.Infrastructure.Data;
+using System.IO;
 
 namespace NexusFirmware.App.ViewModels;
 

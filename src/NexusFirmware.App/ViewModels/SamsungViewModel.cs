@@ -4,6 +4,9 @@ using NexusFirmware.App.Services;
 using NexusFirmware.Core.Abstractions;
 using NexusFirmware.Core.Models;
 using NexusFirmware.Samsung;
+using System.IO;
+using System.Collections.Generic;
+using System.Threading.Tasks;
 
 namespace NexusFirmware.App.ViewModels;
 

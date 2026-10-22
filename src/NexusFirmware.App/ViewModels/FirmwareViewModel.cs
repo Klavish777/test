@@ -8,6 +8,10 @@ using NexusFirmware.Core.Models;
 using NexusFirmware.Firmware.Comparison;
 using NexusFirmware.Firmware.Library;
 using NexusFirmware.Infrastructure.Configuration;
+using System.IO;
+using System.Collections.Generic;
+using System.Linq;
+using System.Threading.Tasks;
 
 namespace NexusFirmware.App.ViewModels;
 
