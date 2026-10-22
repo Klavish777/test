@@ -33,8 +33,23 @@ jobs:
           key: nuget-${{ runner.os }}-${{ hashFiles('**/*.csproj', 'Directory.Build.props') }}
           restore-keys: nuget-${{ runner.os }}-
 
+      - name: Версии SDK
+        run: dotnet --info
+
       - name: Восстановление пакетов
-        run: dotnet restore tests/NexusFirmware.UnitTests/NexusFirmware.UnitTests.csproj tests/NexusFirmware.IntegrationTests/NexusFirmware.IntegrationTests.csproj
+        id: restore
+        shell: bash
+        run: |
+          set -o pipefail
+          dotnet restore tests/NexusFirmware.UnitTests/NexusFirmware.UnitTests.csproj tests/NexusFirmware.IntegrationTests/NexusFirmware.IntegrationTests.csproj 2>&1 | tee restore.log
+
+      - name: Аннотации ошибок восстановления
+        if: failure()
+        shell: bash
+        run: |
+          grep -E "(error|Ошибка|Unable|not found)" restore.log | sort -u | head -40 | while IFS= read -r line; do
+            echo "::error::$line"
+          done
 
       - name: Сборка библиотек и тестов
         id: build
