@@ -214,3 +214,40 @@ jobs:
             dist/installer/Output/*.exe
             dist/artifacts/publish/NexusFirmwareStudio.exe
           fail_on_unmatched_files: false
+
+  # --------------------------------------------------------------- preview ---
+  preview:
+    name: Предпросмотр сборки (установщик)
+    runs-on: ubuntu-latest
+    needs: windows
+    if: github.event_name == 'push' && startsWith(github.ref, 'refs/heads/arena/')
+    permissions:
+      contents: write
+    steps:
+      - name: Загрузка установщика
+        uses: actions/download-artifact@v4
+        with:
+          name: nexus-firmware-studio-windows
+          path: dist
+
+      - name: Публикация предпросмотра
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: preview-build-${{ github.run_number }}
+          name: NEXUS Firmware Studio — предпросмотр сборки ${{ github.run_number }}
+          prerelease: true
+          body: |
+            Предварительная сборка NEXUS Firmware Studio из ветки `${{ github.ref_name }}`
+            (коммит `${{ github.sha }}`).
+
+            **Установщик:** `NEXUS-Firmware-Studio-Setup-*.exe` (Windows 10/11 x64).
+            **Портативная версия:** `NexusFirmwareStudio.exe`.
+
+            Это предпросмотр: приложение проверено автотестами и собирается, но не проходило
+            приёмочное тестирование на реальных устройствах. Запись на устройство выполняется
+            только после явных подтверждений; Samsung Odin, MediaTek BROM и Qualcomm Firehose
+            не реализованы — доступна только подготовка пакета и отчёта.
+          files: |
+            dist/installer/Output/*.exe
+            dist/artifacts/publish/NexusFirmwareStudio.exe
+          fail_on_unmatched_files: false
