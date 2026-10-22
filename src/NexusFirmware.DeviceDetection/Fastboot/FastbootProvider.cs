@@ -184,7 +184,7 @@ public sealed class FastbootProvider : IDeviceProvider
         foreach (var rawLine in output.Split('\n', StringSplitOptions.RemoveEmptyEntries))
         {
             var line = rawLine.Trim();
-            if (line.Length == 0 || line.StartsWith('<', StringComparison.Ordinal) || line.StartsWith('*'))
+            if (line.Length == 0 || line.StartsWith('<') || line.StartsWith('*'))
             {
                 continue;
             }

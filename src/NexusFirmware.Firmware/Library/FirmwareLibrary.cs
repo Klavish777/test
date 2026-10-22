@@ -183,7 +183,7 @@ public sealed class FirmwareLibrary
                         {
                             Name = partition.Name,
                             FileName = $"payload.bin:{partition.Name}",
-                            SizeBytes = partition.Size,
+                            SizeBytes = partition.SizeBytes,
                             Format = FirmwareFormat.Image,
                             Partition = partition.Name
                         });
