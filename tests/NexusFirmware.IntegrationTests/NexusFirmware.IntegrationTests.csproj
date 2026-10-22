@@ -14,6 +14,11 @@
   </ItemGroup>
 
   <ItemGroup>
+    <Compile Include="../NexusFirmware.UnitTests/TestSupport.cs" Link="Shared/TestSupport.cs" />
+    <Compile Include="../NexusFirmware.UnitTests/TestData.cs" Link="Shared/TestData.cs" />
+  </ItemGroup>
+
+  <ItemGroup>
     <ProjectReference Include="../../src/NexusFirmware.Core/NexusFirmware.Core.csproj" />
     <ProjectReference Include="../../src/NexusFirmware.Infrastructure/NexusFirmware.Infrastructure.csproj" />
     <ProjectReference Include="../../src/NexusFirmware.DeviceDetection/NexusFirmware.DeviceDetection.csproj" />
@@ -23,11 +28,6 @@
     <ProjectReference Include="../../src/NexusFirmware.MediaTek/NexusFirmware.MediaTek.csproj" />
     <ProjectReference Include="../../src/NexusFirmware.Samsung/NexusFirmware.Samsung.csproj" />
     <ProjectReference Include="../../src/NexusFirmware.Plugins/NexusFirmware.Plugins.csproj" />
-  </ItemGroup>
-
-  <ItemGroup>
-    <Compile Include="../NexusFirmware.UnitTests/TestSupport.cs" Link="Shared/TestSupport.cs" />
-    <Compile Include="../NexusFirmware.UnitTests/TestData.cs" Link="Shared/TestData.cs" />
   </ItemGroup>
 
 </Project>

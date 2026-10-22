@@ -179,45 +179,41 @@ public sealed class WindowsUsbEnumerator
     /// <summary>Формирование сведений об устройстве по USB-дескриптору (без выдуманных данных).</summary>
     public static DeviceInfo ToDeviceInfo(UsbDeviceDescriptor descriptor)
     {
-        var vendorName = KnownUsbIdentifiers.VendorName(descriptor.VendorId);
-        var mode = DeviceMode.UsbGeneric;
+        var mode = ClassifyDevice(descriptor);
         var warnings = new List<string>();
 
-        if (descriptor.VendorId == KnownUsbIdentifiers.QualcommVendorId && descriptor.ProductId == KnownUsbIdentifiers.QualcommEdlProductId)
+        if (descriptor.Driver == DriverStatus.Problem)
         {
-            mode = DeviceMode.QualcommEdl;
-            warnings.Add("Устройство находится в режиме Qualcomm EDL (9008). Работа с ним требует совместимого programmer-файла и разрешённого инструмента.");
+            warnings.Add($"Драйвер устройства не работает (код {descriptor.ProblemCode?.ToString() ?? "неизвестен"}). " +
+                         "Установите официальный драйвер производителя.");
         }
-        else if (descriptor.VendorId == KnownUsbIdentifiers.MediaTekVendorId)
+
+        if (mode == DeviceMode.QualcommEdl)
         {
-            mode = DeviceMode.MediaTekPreloader;
-            warnings.Add("Обнаружен интерфейс MediaTek. Режим может быть Preloader или BootROM — уточните по VID/PID и журналу драйвера.");
+            warnings.Add("Устройство в режиме Qualcomm EDL (9008): запись возможна только официальным инструментом.");
         }
-        else if (descriptor.VendorId == KnownUsbIdentifiers.SamsungVendorId)
+        else if (mode == DeviceMode.MediaTekBootrom)
         {
-            mode = DeviceMode.DiagnosticsPort;
+            warnings.Add("Устройство в режиме MediaTek BROM/Preloader: работа с BROM не реализована.");
         }
-        else if (descriptor.VendorId == KnownUsbIdentifiers.GoogleVendorId && descriptor.ProductId == KnownUsbIdentifiers.GoogleFastbootProductId)
+        else if (mode == DeviceMode.Download)
         {
-            mode = DeviceMode.Fastboot;
+            warnings.Add("Устройство в режиме Samsung Download: используется официальный инструмент производителя.");
         }
 
         return new DeviceInfo
         {
-            Id = $"usb:{descriptor.DeviceInstanceId}",
+            Id = "usb:" + descriptor.InstanceId,
             Transport = DeviceTransport.Usb,
             Mode = mode,
-            Connection = descriptor.Driver == DriverStatus.Problem ? ConnectionState.NoPermissions : ConnectionState.Connected,
-            Manufacturer = descriptor.Manufacturer ?? vendorName,
-            Model = descriptor.Description,
-            VendorId = descriptor.VendorId?.ToString("X4"),
-            ProductId = descriptor.ProductId?.ToString("X4"),
-            UsbDevicePath = descriptor.DeviceInstanceId,
+            Connection = descriptor.Driver == DriverStatus.Problem ? ConnectionState.Unknown : ConnectionState.Connected,
+            Serial = null,
+            Manufacturer = descriptor.Manufacturer,
+            Model = descriptor.Name,
+            VendorId = $"{(descriptor.VendorId ?? 0):X4}",
+            ProductId = $"{(descriptor.ProductId ?? 0):X4}",
             Driver = descriptor.Driver,
-            DriverName = descriptor.Service,
-            DetectedAt = DateTimeOffset.Now,
-            Warnings = warnings,
-            Capabilities = ["Диагностика USB-подключения"]
+            ProblemCode = descriptor.ProblemCode,
+            Warnings = warnings
         };
     }
-}
