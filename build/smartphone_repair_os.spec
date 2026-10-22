@@ -11,8 +11,7 @@ from pathlib import Path
 
 from PyInstaller.utils.hooks import collect_submodules
 
-ROOT = Path(SPECPATH).resolve().parent  # noqa: F821 - переменные PyInstaller
-PROJECT_ROOT = ROOT.parent
+PROJECT_ROOT = Path(SPECPATH).resolve().parent  # noqa: F821 - переменные PyInstaller
 
 datas = [
     (str(PROJECT_ROOT / "repair_os" / "data" / "migrations"), "repair_os/data/migrations"),

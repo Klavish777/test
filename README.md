@@ -1,3 +1,19 @@
+# Smartphone Repair OS + Apple Flash Studio
+
+В репозитории находятся **два самостоятельных настольных приложения для Windows 10/11 (x64)** на базе Python + PySide6:
+
+1. **[Apple Flash Studio](docs/APPLE_FLASH_STUDIO.md)** — специализированное приложение для локальной перепрошивки и восстановления **iPhone, iPad и MacBook (Apple Silicon M1–M4 и Intel T2)**:
+   - автоопределение USB / Recovery / DFU (`pymobiledevice3`, `libimobiledevice`, Windows PnP `VID_05AC`);
+   - локальная офлайн-библиотека `.ipsw` с мгновенным разбором `BuildManifest.plist` без распаковки архива и проверкой SHA-256 / SHA-1;
+   - режимы **Update** (с сохранением данных), **Clean Restore** (со стиранием), **Revive MacBook DFU**, управление **Recovery** в 1 клик и безопасная репетиция **Dry-Run**;
+   - интерактивный секундомер входа в DFU и схема сервисных DFU-портов MacBook;
+   - запуск на Windows: `run_apple_flash.bat`, сборка `.exe` и установщика: `scripts\build_apple_flash_windows.bat`.
+2. **Smartphone Repair OS** (описание ниже) — универсальная локальная рабочая станция мастера по ремонту смартфонов (каталог устройств, 3D BoardView, Firmware Center, Technical Library).
+
+![Apple Flash Studio](docs/screenshots/apple_01_dashboard.png)
+
+---
+
 # Smartphone Repair OS
 
 **Локальная рабочая станция мастера по ремонту смартфонов**: каталог устройств, настоящий

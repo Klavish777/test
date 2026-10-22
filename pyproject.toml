@@ -19,6 +19,7 @@ dev = ["pytest>=8.0", "pytest-qt>=4.4", "pyinstaller>=6.6"]
 
 [project.scripts]
 smartphone-repair-os = "repair_os.app:main"
+apple-flash-studio = "apple_flash.app:main"
 
 [tool.setuptools]
 packages = [
@@ -32,6 +33,12 @@ packages = [
     "repair_os.ui",
     "repair_os.ui.pages",
     "repair_os.ui.dialogs",
+    "apple_flash",
+    "apple_flash.core",
+    "apple_flash.data",
+    "apple_flash.services",
+    "apple_flash.ui",
+    "apple_flash.ui.pages",
 ]
 
 [tool.setuptools.package-data]
@@ -39,6 +46,9 @@ repair_os = [
     "data/migrations/*.sql",
     "resources/i18n/*.json",
     "seed/assets/*",
+]
+apple_flash = [
+    "resources/*.ico",
 ]
 
 [tool.pytest.ini_options]
