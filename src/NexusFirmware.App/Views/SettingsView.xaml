@@ -133,6 +133,8 @@
                                    FontFamily="{StaticResource MonoFont}" TextWrapping="Wrap" />
                         <TextBlock Text="{Binding LogsDirectory, StringFormat=Журналы: {0}}" Style="{StaticResource Caption}"
                                    FontFamily="{StaticResource MonoFont}" TextWrapping="Wrap" />
+                        <TextBlock Text="{Binding BuildInfo}" Style="{StaticResource Caption}"
+                                   FontFamily="{StaticResource MonoFont}" TextWrapping="Wrap" Margin="0,4,0,0" />
                         <WrapPanel Margin="0,8,0,0">
                             <Button Content="Открыть каталог данных" Command="{Binding OpenDataFolderCommand}" Margin="0,0,8,0" />
                             <Button Content="Сбросить настройки" Command="{Binding ResetCommand}" Style="{StaticResource GhostButton}" />

@@ -7,6 +7,7 @@ using NexusFirmware.App.Services;
 using NexusFirmware.Core.Abstractions;
 using NexusFirmware.Infrastructure.Configuration;
 using System.IO;
+using System.Linq;
 using System.Collections.Generic;
 using System.Threading.Tasks;
 
@@ -157,6 +158,9 @@ public sealed class SettingsViewModel : PageViewModelBase
         private set => SetProperty(ref _isBusy, value);
     }
 
+    /// <summary>Версия и коммит сборки: позволяет убедиться, что установлена нужная сборка.</summary>
+    public string BuildInfo { get; } = BuildInfoText();
+
     public string DataDirectory => _paths.Root;
 
     public string DatabasePath => _paths.Database;
@@ -178,6 +182,25 @@ public sealed class SettingsViewModel : PageViewModelBase
     public AsyncRelayCommand CheckUpdatesCommand { get; }
 
     public RelayCommand ResetCommand { get; }
+
+    private static string BuildInfoText()
+    {
+        var assembly = typeof(SettingsViewModel).Assembly;
+        var version = assembly.GetName().Version?.ToString(3) ?? "1.0.0";
+        var informational = assembly.GetCustomAttributes(typeof(System.Reflection.AssemblyInformationalVersionAttribute), false)
+            .OfType<System.Reflection.AssemblyInformationalVersionAttribute>()
+            .FirstOrDefault()?.InformationalVersion;
+
+        var commit = informational?.Split('+').ElementAtOrDefault(1);
+        if (!string.IsNullOrWhiteSpace(commit))
+        {
+            commit = commit.Length > 7 ? commit[..7] : commit;
+        }
+
+        return string.IsNullOrWhiteSpace(commit)
+            ? $"Версия {version} · локальная сборка"
+            : $"Версия {version} · коммит {commit}";
+    }
 
     private void LoadFromSettings()
     {
