@@ -215,7 +215,7 @@
 
                     <StackPanel VerticalAlignment="Center">
                         <TextBlock Text="{Binding CurrentJobStatus}" FontSize="12" />
-                        <ProgressBar Value="{Binding CurrentJobProgress}" Maximum="100" Margin="0,5,20,0" />
+                        <ProgressBar Value="{Binding CurrentJobProgress, Mode=OneWay}" Maximum="100" Margin="0,5,20,0" />
                     </StackPanel>
 
                     <StackPanel Grid.Column="1" VerticalAlignment="Center">

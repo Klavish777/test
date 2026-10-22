@@ -52,6 +52,7 @@ public partial class App : Application
         var log = _services.GetRequiredService<ILogBus>();
         log.Info("App", $"Запуск NEXUS Firmware Studio {typeof(App).Assembly.GetName().Version}. Каталог данных: {paths.Root}");
         log.Info("App", $"Режим только чтения: {(settings.ReadOnlyMode ? "включён" : "выключен")}.");
+        BindingDiagnostics.Attach(log);
 
         try
         {
