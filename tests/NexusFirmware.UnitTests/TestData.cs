@@ -1,3 +1,4 @@
+using System.IO.Compression;
 using NexusFirmware.Core.Models;
 using NUnit.Framework;
 
