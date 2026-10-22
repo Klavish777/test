@@ -6,6 +6,7 @@ using NexusFirmware.Core.Models;
 using NexusFirmware.DeviceDetection.Services;
 using NexusFirmware.Firmware.Qualcomm;
 using NexusFirmware.Firmware.Scatter;
+using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
 

@@ -415,7 +415,7 @@ public sealed class FlashingViewModel : PageViewModelBase
             return;
         }
 
-        if (!_plan.RequiresExplicitConfirmation)
+        if (!_plan.Plan.RequiresExplicitConfirmation)
         {
             Dialogs.Warn("Выполнение", "План не содержит операций, изменяющих устройство.");
             return;
