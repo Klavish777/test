@@ -305,7 +305,13 @@ public static class SamsungPackageAnalyzer
     /// <summary>Ревизия загрузчика в PDA-версии (эвристика Samsung, обозначается как предположение).</summary>
     public static string? ExtractBinaryRevision(string pdaVersion)
     {
-        var match = Regex.Match(pdaVersion, "^[A-Z0-9]{4,8}([A-Z]{2})([A-Z])(\\d)", RegexOptions.CultureInvariant);
+        var normalized = pdaVersion.Trim().ToUpperInvariant();
+        if (normalized.StartsWith("SM-", StringComparison.Ordinal))
+        {
+            normalized = normalized[3..];
+        }
+
+        var match = Regex.Match(normalized, @"^[A-Z0-9]{4,8}([A-Z]{2})([A-Z])(\d)", RegexOptions.CultureInvariant);
         return match.Success ? match.Groups[3].Value : null;
     }
 }

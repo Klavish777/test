@@ -76,27 +76,25 @@ public sealed class CompatibilityTests
 [TestFixture]
 public sealed class FirmwareComparerTests
 {
+    private static void FillZip(string path, params (string Name, string Content)[] entries)
+    {
+        using var zip = ZipFile.Open(path, ZipArchiveMode.Create);
+        foreach (var (name, content) in entries)
+        {
+            using var writer = new StreamWriter(zip.CreateEntry(name).Open());
+            writer.Write(content);
+        }
+    }
+
     [Test]
     public void ComparesMetadataAndArchiveContents()
     {
         using var temp = new TempDirectory();
         var left = Path.Combine(temp.Path, "left.zip");
-        using (var zip = ZipFile.Open(left, ZipArchiveMode.Create))
-        {
-            using var a = new StreamWriter(zip.CreateEntry("boot.img").Open());
-            a.Write("boot");
-            using var b = new StreamWriter(zip.CreateEntry("system.img").Open());
-            b.Write("system");
-        }
+        FillZip(left, ("boot.img", "boot"), ("system.img", "system"));
 
         var right = Path.Combine(temp.Path, "right.zip");
-        using (var zip = ZipFile.Open(right, ZipArchiveMode.Create))
-        {
-            using var a = new StreamWriter(zip.CreateEntry("boot.img").Open());
-            a.Write("boot");
-            using var b = new StreamWriter(zip.CreateEntry("vendor.img").Open());
-            b.Write("vendor");
-        }
+        FillZip(right, ("boot.img", "boot"), ("vendor.img", "vendor"));
 
         var leftPackage = new FirmwarePackage
         {

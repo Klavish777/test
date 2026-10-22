@@ -59,7 +59,7 @@ public sealed class HashingTests
     {
         using var temp = new TempDirectory();
         var path = temp.File("hello.txt");
-        await File.WriteAllTextAsync(path, "hello", Encoding.UTF8);
+        await File.WriteAllBytesAsync(path, "hello"u8.ToArray());
 
         var hash = await Hashing.Sha256FileAsync(path);
         Assert.That(hash, Is.EqualTo("2cf24dba5fb0a30e26e83b2ac5b9e29e1b161e5c1fa7425e73043362938b9824"));
