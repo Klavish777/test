@@ -6,6 +6,7 @@ using NexusFirmware.Core.Models;
 using NexusFirmware.DeviceDetection;
 using NexusFirmware.Firmware.Library;
 using NexusFirmware.Infrastructure.Configuration;
+using NexusFirmware.Infrastructure.Data;
 
 namespace NexusFirmware.App.ViewModels;
 
