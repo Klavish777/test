@@ -41,7 +41,7 @@ jobs:
         shell: bash
         run: |
           set -o pipefail
-          dotnet restore tests/NexusFirmware.UnitTests/NexusFirmware.UnitTests.csproj tests/NexusFirmware.IntegrationTests/NexusFirmware.IntegrationTests.csproj 2>&1 | tee restore.log
+          dotnet restore NexusFirmware.sln 2>&1 | tee restore.log
 
       - name: Аннотации ошибок восстановления
         if: failure()
@@ -56,7 +56,8 @@ jobs:
         shell: bash
         run: |
           set -o pipefail
-          dotnet build tests/NexusFirmware.UnitTests/NexusFirmware.UnitTests.csproj tests/NexusFirmware.IntegrationTests/NexusFirmware.IntegrationTests.csproj -c Release --no-restore 2>&1 | tee build.log
+          dotnet build tests/NexusFirmware.UnitTests/NexusFirmware.UnitTests.csproj -c Release --no-restore 2>&1 | tee build.log
+          dotnet build tests/NexusFirmware.IntegrationTests/NexusFirmware.IntegrationTests.csproj -c Release --no-restore 2>&1 | tee -a build.log
 
       - name: Аннотации ошибок сборки
         if: failure()
